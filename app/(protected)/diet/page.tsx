@@ -20,7 +20,7 @@ export default async function DietPage() {
       .order('created_at', { ascending: false }),
     supabase
       .from('table_shares')
-      .select('*, diet_table:diet_tables(*), profile:profiles!table_shares_shared_with_id_fkey(email, full_name)')
+      .select('*, diet_table:diet_tables(*), profile:profiles!table_shares_shared_with_profile_fkey(email, full_name)')
       .eq('shared_with_id', user!.id)
       .eq('table_type', 'diet'),
   ])
@@ -30,7 +30,7 @@ export default async function DietPage() {
   const { data: sharesForOwned } = tableIds.length
     ? await supabase
         .from('table_shares')
-        .select('*, profile:profiles!table_shares_shared_with_id_fkey(email, full_name)')
+        .select('*, profile:profiles!table_shares_shared_with_profile_fkey(email, full_name)')
         .in('table_id', tableIds)
         .eq('table_type', 'diet')
     : { data: [] }

@@ -12,20 +12,35 @@ export default async function DietPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: myTables }, { data: sharedData }] = await Promise.all([
-    supabase
-      .from('diet_tables')
-      .select('*')
-      .eq('user_id', user!.id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('table_shares')
-      .select('*, diet_table:diet_tables(*), profile:profiles!table_shares_shared_with_profile_fkey(email, full_name)')
-      .eq('shared_with_id', user!.id)
-      .eq('table_type', 'diet'),
-  ])
+  // My own tables
+  const { data: myTables } = await supabase
+    .from('diet_tables')
+    .select('*')
+    .eq('user_id', user!.id)
+    .order('created_at', { ascending: false })
 
-  // For each owned table, fetch share counts
+  // Shares where I am the recipient (just ids + access_mode, no join)
+  const { data: myShares } = await supabase
+    .from('table_shares')
+    .select('*')
+    .eq('shared_with_id', user!.id)
+    .eq('table_type', 'diet')
+
+  // Fetch the shared tables separately using the ids
+  const sharedTableIds = (myShares ?? []).map((s) => s.table_id)
+  const { data: sharedTables } = sharedTableIds.length
+    ? await supabase
+        .from('diet_tables')
+        .select('*')
+        .in('id', sharedTableIds)
+    : { data: [] }
+
+  const sharedList = (myShares ?? []).map((share) => ({
+    ...share,
+    diet_table: sharedTables?.find((t) => t.id === share.table_id) ?? null,
+  }))
+
+  // Share counts + profile info for owned tables (for the ShareTableDialog)
   const tableIds = (myTables ?? []).map((t) => t.id)
   const { data: sharesForOwned } = tableIds.length
     ? await supabase
@@ -42,7 +57,6 @@ export default async function DietPage() {
   }, {})
 
   const myList = myTables ?? []
-  const sharedList = sharedData ?? []
 
   return (
     <div className="space-y-6">
@@ -95,7 +109,7 @@ export default async function DietPage() {
                   key={s.diet_table?.id}
                   table={s.diet_table as any}
                   isOwner={false}
-                  accessMode={s.access_mode}
+                  accessMode={s.access_mode as 'view' | 'edit'}
                 />
               ))}
             </div>

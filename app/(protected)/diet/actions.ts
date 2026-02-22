@@ -151,7 +151,7 @@ export async function shareTable(
       shared_with_id: targetUser,
       access_mode: values.access_mode,
     })
-    .select('*, profile:profiles!table_shares_shared_with_id_fkey(email, full_name)')
+    .select('*, profile:profiles!table_shares_shared_with_profile_fkey(email, full_name)')
     .single()
 
   if (error) {

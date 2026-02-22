@@ -45,7 +45,7 @@ export default async function WorkoutTablePage({ params }: PageProps) {
   const { data: shares } = isOwner
     ? await supabase
         .from('table_shares')
-        .select('*, profile:profiles!table_shares_shared_with_id_fkey(email, full_name)')
+        .select('*, profile:profiles!table_shares_shared_with_profile_fkey(email, full_name)')
         .eq('table_id', tableId)
         .eq('table_type', 'workout')
     : { data: [] }

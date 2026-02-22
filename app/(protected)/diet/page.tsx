@@ -12,32 +12,27 @@ export default async function DietPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // My own tables
-  const { data: myTables } = await supabase
-    .from('diet_tables')
-    .select('*')
-    .eq('user_id', user!.id)
-    .order('created_at', { ascending: false })
+  const [{ data: myTables }, { data: sharedResult }] = await Promise.all([
+    supabase
+      .from('diet_tables')
+      .select('*')
+      .eq('user_id', user!.id)
+      .order('created_at', { ascending: false }),
+    // RPC does a server-side JOIN with SECURITY DEFINER — avoids RLS subquery issues
+    supabase.rpc('get_my_shared_diet_tables'),
+  ])
 
-  // Shares where I am the recipient (just ids + access_mode, no join)
-  const { data: myShares } = await supabase
-    .from('table_shares')
-    .select('*')
-    .eq('shared_with_id', user!.id)
-    .eq('table_type', 'diet')
-
-  // Fetch the shared tables separately using the ids
-  const sharedTableIds = (myShares ?? []).map((s) => s.table_id)
-  const { data: sharedTables } = sharedTableIds.length
-    ? await supabase
-        .from('diet_tables')
-        .select('*')
-        .in('id', sharedTableIds)
-    : { data: [] }
-
-  const sharedList = (myShares ?? []).map((share) => ({
-    ...share,
-    diet_table: sharedTables?.find((t) => t.id === share.table_id) ?? null,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sharedList = (sharedResult ?? []).map((row: any) => ({
+    id: row.share_id as string,
+    access_mode: row.access_mode as 'view' | 'edit',
+    diet_table: {
+      id: row.id as string,
+      user_id: row.user_id as string,
+      name: row.name as string,
+      created_at: row.created_at as string,
+      updated_at: row.updated_at as string,
+    },
   }))
 
   // Share counts + profile info for owned tables (for the ShareTableDialog)
@@ -106,10 +101,10 @@ export default async function DietPage() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {sharedList.map((s) => (
                 <DietTableCard
-                  key={s.diet_table?.id}
+                  key={s.id}
                   table={s.diet_table as any}
                   isOwner={false}
-                  accessMode={s.access_mode as 'view' | 'edit'}
+                  accessMode={s.access_mode}
                 />
               ))}
             </div>

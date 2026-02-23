@@ -1,10 +1,10 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Plus, Share2 } from 'lucide-react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { toast } from 'sonner'
+import { useState } from "react";
+import { Plus, Share2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -12,20 +12,28 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { ShareTableDialog } from '@/components/diet/ShareTableDialog'
-import { WorkoutExerciseRow } from './WorkoutExerciseRow'
-import { addWorkoutExercise, renameWorkoutTable } from '@/app/(protected)/workout/actions'
-import { workoutExerciseSchema, type WorkoutExerciseFormValues } from '@/lib/validations'
-import type { WorkoutTableWithExercises, TableShare } from '@/types'
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ShareTableDialog } from "@/components/diet/ShareTableDialog";
+import { WorkoutExerciseRow } from "./WorkoutExerciseRow";
+import {
+  addWorkoutExercise,
+  renameWorkoutTable,
+} from "@/app/(protected)/workout/actions";
+import {
+  workoutExerciseSchema,
+  type WorkoutExerciseFormValues,
+} from "@/lib/validations";
+import type { WorkoutTableWithExercises, TableShare } from "@/types";
 
 interface WorkoutTableEditorProps {
-  table: WorkoutTableWithExercises
-  canEdit: boolean
-  isOwner: boolean
-  shares: (TableShare & { profile: { email: string; full_name: string | null } })[]
+  table: WorkoutTableWithExercises;
+  canEdit: boolean;
+  isOwner: boolean;
+  shares: (TableShare & {
+    profile: { email: string; full_name: string | null };
+  })[];
 }
 
 export function WorkoutTableEditor({
@@ -34,37 +42,41 @@ export function WorkoutTableEditor({
   isOwner,
   shares,
 }: WorkoutTableEditorProps) {
-  const [shareOpen, setShareOpen] = useState(false)
-  const [tableName, setTableName] = useState(table.name)
-  const [editingName, setEditingName] = useState(false)
-  const [showAddRow, setShowAddRow] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false);
+  const [tableName, setTableName] = useState(table.name);
+  const [editingName, setEditingName] = useState(false);
+  const [showAddRow, setShowAddRow] = useState(false);
 
   const addForm = useForm<WorkoutExerciseFormValues>({
     resolver: zodResolver(workoutExerciseSchema),
-    defaultValues: { name: '', sets: 3, reps: 10, calories: null },
-  })
+    defaultValues: { name: "", sets: 3, reps: 10, calories: null },
+  });
 
   const totalCalories = table.workout_exercises
     .filter((e) => e.calories != null)
-    .reduce((sum, e) => sum + (e.calories ?? 0), 0)
+    .reduce((sum, e) => sum + (e.calories ?? 0), 0);
 
   async function handleRenameTable() {
     if (tableName === table.name) {
-      setEditingName(false)
-      return
+      setEditingName(false);
+      return;
     }
-    const result = await renameWorkoutTable(table.id, tableName)
-    if (result?.error) toast.error(result.error)
-    setEditingName(false)
+    const result = await renameWorkoutTable(table.id, tableName);
+    if (result?.error) toast.error(result.error);
+    setEditingName(false);
   }
 
   async function handleAddExercise(values: WorkoutExerciseFormValues) {
-    const result = await addWorkoutExercise(table.id, values, table.workout_exercises.length)
-    if (result?.error) toast.error(result.error)
+    const result = await addWorkoutExercise(
+      table.id,
+      values,
+      table.workout_exercises.length,
+    );
+    if (result?.error) toast.error(result.error);
     else {
-      toast.success('Exercise added')
-      addForm.reset({ name: '', sets: 3, reps: 10, calories: null })
-      setShowAddRow(false)
+      toast.success("Exercise added");
+      addForm.reset({ name: "", sets: 3, reps: 10, calories: null });
+      setShowAddRow(false);
     }
   }
 
@@ -78,15 +90,15 @@ export function WorkoutTableEditor({
               value={tableName}
               onChange={(e) => setTableName(e.target.value)}
               onBlur={handleRenameTable}
-              onKeyDown={(e) => e.key === 'Enter' && handleRenameTable()}
+              onKeyDown={(e) => e.key === "Enter" && handleRenameTable()}
               autoFocus
               className="text-2xl font-bold h-10 max-w-xs"
             />
           ) : (
             <h1
-              className={`text-2xl font-bold truncate ${canEdit ? 'cursor-pointer hover:underline' : ''}`}
+              className={`text-2xl font-bold truncate ${canEdit ? "cursor-pointer hover:underline" : ""}`}
               onClick={() => canEdit && setEditingName(true)}
-              title={canEdit ? 'Click to rename' : undefined}
+              title={canEdit ? "Click to rename" : undefined}
             >
               {tableName}
             </h1>
@@ -104,7 +116,11 @@ export function WorkoutTableEditor({
             </Button>
           )}
           {canEdit && (
-            <Button size="sm" className="gap-2" onClick={() => setShowAddRow(true)}>
+            <Button
+              size="sm"
+              className="gap-2"
+              onClick={() => setShowAddRow(true)}
+            >
               <Plus className="size-4" /> Add Exercise
             </Button>
           )}
@@ -129,7 +145,7 @@ export function WorkoutTableEditor({
               <TableRow>
                 <TableCell>
                   <Input
-                    {...addForm.register('name')}
+                    {...addForm.register("name")}
                     className="h-7 text-sm"
                     placeholder="Exercise name"
                     autoFocus
@@ -138,14 +154,14 @@ export function WorkoutTableEditor({
                 <TableCell>
                   <Input
                     type="number"
-                    {...addForm.register('sets', { valueAsNumber: true })}
+                    {...addForm.register("sets", { valueAsNumber: true })}
                     className="h-7 w-16 text-sm text-center"
                   />
                 </TableCell>
                 <TableCell>
                   <Input
                     type="number"
-                    {...addForm.register('reps', { valueAsNumber: true })}
+                    {...addForm.register("reps", { valueAsNumber: true })}
                     className="h-7 w-16 text-sm text-center"
                   />
                 </TableCell>
@@ -153,7 +169,7 @@ export function WorkoutTableEditor({
                   <Input
                     type="number"
                     step="0.1"
-                    {...addForm.register('calories', { valueAsNumber: true })}
+                    {...addForm.register("calories", { valueAsNumber: true })}
                     className="h-7 w-20 text-sm text-center"
                     placeholder="optional"
                   />
@@ -162,9 +178,10 @@ export function WorkoutTableEditor({
                   <div className="flex gap-1">
                     <Button
                       size="icon-xs"
+                      variant="ghost"
                       onClick={addForm.handleSubmit(handleAddExercise)}
                     >
-                      Add
+                      <Plus className="size-4" />
                     </Button>
                     <Button
                       size="icon-xs"
@@ -186,7 +203,7 @@ export function WorkoutTableEditor({
                 >
                   {canEdit
                     ? 'No exercises yet. Click "Add Exercise" to get started.'
-                    : 'No exercises added.'}
+                    : "No exercises added."}
                 </td>
               </TableRow>
             ) : (
@@ -208,8 +225,12 @@ export function WorkoutTableEditor({
       {/* Total calories */}
       {totalCalories > 0 && (
         <div className="flex items-center justify-end gap-2 rounded-lg bg-primary/10 px-4 py-2">
-          <span className="text-sm font-medium text-muted-foreground">Total estimated burn:</span>
-          <span className="text-base font-bold text-primary">{totalCalories.toFixed(0)} kcal</span>
+          <span className="text-sm font-medium text-muted-foreground">
+            Total estimated burn:
+          </span>
+          <span className="text-base font-bold text-primary">
+            {totalCalories.toFixed(0)} kcal
+          </span>
         </div>
       )}
 
@@ -224,5 +245,5 @@ export function WorkoutTableEditor({
         />
       )}
     </div>
-  )
+  );
 }

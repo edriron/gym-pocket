@@ -22,8 +22,9 @@ export default async function DietPage() {
     supabase.rpc('get_my_shared_diet_tables'),
   ])
 
+  type SharedDietItem = { id: string; access_mode: 'view' | 'edit'; diet_table: { id: string; user_id: string; name: string; created_at: string; updated_at: string } }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sharedList = (sharedResult ?? []).map((row: any) => ({
+  const sharedList: SharedDietItem[] = (sharedResult ?? []).map((row: any) => ({
     id: row.share_id as string,
     access_mode: row.access_mode as 'view' | 'edit',
     diet_table: {

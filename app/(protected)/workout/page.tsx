@@ -12,32 +12,28 @@ export default async function WorkoutPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // My own tables
-  const { data: myTables } = await supabase
-    .from('workout_tables')
-    .select('*')
-    .eq('user_id', user!.id)
-    .order('created_at', { ascending: false })
+  const [{ data: myTables }, { data: sharedResult }] = await Promise.all([
+    supabase
+      .from('workout_tables')
+      .select('*')
+      .eq('user_id', user!.id)
+      .order('created_at', { ascending: false }),
+    // RPC does a server-side JOIN with SECURITY DEFINER — avoids RLS subquery issues
+    supabase.rpc('get_my_shared_workout_tables'),
+  ])
 
-  // Shares where I am the recipient (just ids + access_mode, no join)
-  const { data: myShares } = await supabase
-    .from('table_shares')
-    .select('*')
-    .eq('shared_with_id', user!.id)
-    .eq('table_type', 'workout')
-
-  // Fetch the shared tables separately using the ids
-  const sharedTableIds = (myShares ?? []).map((s) => s.table_id)
-  const { data: sharedTables } = sharedTableIds.length
-    ? await supabase
-        .from('workout_tables')
-        .select('*')
-        .in('id', sharedTableIds)
-    : { data: [] }
-
-  const sharedList = (myShares ?? []).map((share) => ({
-    ...share,
-    workout_table: sharedTables?.find((t) => t.id === share.table_id) ?? null,
+  type SharedWorkoutItem = { id: string; access_mode: 'view' | 'edit'; workout_table: { id: string; user_id: string; name: string; created_at: string; updated_at: string } }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sharedList: SharedWorkoutItem[] = (sharedResult ?? []).map((row: any) => ({
+    id: row.share_id as string,
+    access_mode: row.access_mode as 'view' | 'edit',
+    workout_table: {
+      id: row.id as string,
+      user_id: row.user_id as string,
+      name: row.name as string,
+      created_at: row.created_at as string,
+      updated_at: row.updated_at as string,
+    },
   }))
 
   // Share counts + profile info for owned tables (for the ShareTableDialog)
@@ -106,10 +102,10 @@ export default async function WorkoutPage() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {sharedList.map((s) => (
                 <WorkoutTableCard
-                  key={s.workout_table?.id}
+                  key={s.id}
                   table={s.workout_table as any}
                   isOwner={false}
-                  accessMode={s.access_mode as 'view' | 'edit'}
+                  accessMode={s.access_mode}
                 />
               ))}
             </div>

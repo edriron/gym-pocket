@@ -10,13 +10,17 @@ export default async function ProtectedLayout({
   children: React.ReactNode
 }) {
   const supabase = await createClient()
+  // getSession() reads the cookie set by the proxy — no extra network round-trip.
+  // The proxy already validated the token via getUser(), so this is safe here.
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  if (!user) {
+  if (!session) {
     redirect('/')
   }
+
+  const user = session.user
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

@@ -12,7 +12,8 @@ export default async function DietPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: myTables }, { data: sharedResult }] = await Promise.all([
+  // All three queries run in parallel — no sequential awaits
+  const [{ data: myTables }, { data: sharedResult }, { data: sharesForOwned }] = await Promise.all([
     supabase
       .from('diet_tables')
       .select('*')
@@ -20,6 +21,13 @@ export default async function DietPage() {
       .order('created_at', { ascending: false }),
     // RPC does a server-side JOIN with SECURITY DEFINER — avoids RLS subquery issues
     supabase.rpc('get_my_shared_diet_tables'),
+    // Share counts + profile info for owned tables (for the ShareTableDialog)
+    // Filter by owner_id so we don't need tableIds first
+    supabase
+      .from('table_shares')
+      .select('*, profile:profiles!table_shares_shared_with_profile_fkey(email, full_name)')
+      .eq('owner_id', user!.id)
+      .eq('table_type', 'diet'),
   ])
 
   type SharedDietItem = { id: string; access_mode: 'view' | 'edit'; diet_table: { id: string; user_id: string; name: string; created_at: string; updated_at: string } }
@@ -36,16 +44,7 @@ export default async function DietPage() {
     },
   }))
 
-  // Share counts + profile info for owned tables (for the ShareTableDialog)
-  const tableIds = (myTables ?? []).map((t) => t.id)
-  const { data: sharesForOwned } = tableIds.length
-    ? await supabase
-        .from('table_shares')
-        .select('*, profile:profiles!table_shares_shared_with_profile_fkey(email, full_name)')
-        .in('table_id', tableIds)
-        .eq('table_type', 'diet')
-    : { data: [] }
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sharesByTableId = (sharesForOwned ?? []).reduce<Record<string, any[]>>((acc, s) => {
     if (!acc[s.table_id]) acc[s.table_id] = []
     acc[s.table_id].push(s)

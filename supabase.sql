@@ -459,6 +459,151 @@ CREATE POLICY "ts: update" ON public.table_shares FOR UPDATE USING (auth.uid() =
 CREATE POLICY "ts: delete" ON public.table_shares FOR DELETE USING (auth.uid() = owner_id);
 
 -- ==============================================================
+-- SHARING — FK to public.profiles (required for PostgREST joins)
+-- Run once; idempotent because of IF NOT EXISTS pattern
+-- ==============================================================
+
+ALTER TABLE public.table_shares
+  DROP CONSTRAINT IF EXISTS table_shares_shared_with_profile_fkey;
+
+ALTER TABLE public.table_shares
+  ADD CONSTRAINT table_shares_shared_with_profile_fkey
+  FOREIGN KEY (shared_with_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+-- ==============================================================
+-- SECURITY DEFINER RPCs — bypass nested RLS for shared users
+-- ==============================================================
+
+-- List all diet tables shared with the current user
+CREATE OR REPLACE FUNCTION public.get_my_shared_diet_tables()
+RETURNS TABLE(
+  share_id    uuid,
+  access_mode text,
+  id          uuid,
+  user_id     uuid,
+  name        text,
+  created_at  timestamptz,
+  updated_at  timestamptz
+)
+LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT
+    ts.id        AS share_id,
+    ts.access_mode::text,
+    dt.id,
+    dt.user_id,
+    dt.name,
+    dt.created_at,
+    dt.updated_at
+  FROM public.table_shares ts
+  JOIN public.diet_tables dt ON dt.id = ts.table_id
+  WHERE ts.shared_with_id = auth.uid()
+    AND ts.table_type::text = 'diet';
+$$;
+
+-- List all workout tables shared with the current user
+CREATE OR REPLACE FUNCTION public.get_my_shared_workout_tables()
+RETURNS TABLE(
+  share_id    uuid,
+  access_mode text,
+  id          uuid,
+  user_id     uuid,
+  name        text,
+  created_at  timestamptz,
+  updated_at  timestamptz
+)
+LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT
+    ts.id        AS share_id,
+    ts.access_mode::text,
+    wt.id,
+    wt.user_id,
+    wt.name,
+    wt.created_at,
+    wt.updated_at
+  FROM public.table_shares ts
+  JOIN public.workout_tables wt ON wt.id = ts.table_id
+  WHERE ts.shared_with_id = auth.uid()
+    AND ts.table_type::text = 'workout';
+$$;
+
+-- Return full diet table JSON (owner checks happen in the page server component)
+CREATE OR REPLACE FUNCTION public.get_diet_table_detail(p_table_id uuid)
+RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT jsonb_build_object(
+    'id',            dt.id,
+    'user_id',       dt.user_id,
+    'name',          dt.name,
+    'created_at',    dt.created_at,
+    'updated_at',    dt.updated_at,
+    'diet_sections', COALESCE((
+      SELECT jsonb_agg(
+        jsonb_build_object(
+          'id',         ds.id,
+          'diet_table_id', ds.diet_table_id,
+          'name',       ds.name,
+          'sort_order', ds.sort_order,
+          'created_at', ds.created_at,
+          'diet_rows',  COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'id',         dr.id,
+                'section_id', dr.section_id,
+                'product_id', dr.product_id,
+                'recipe_id',  dr.recipe_id,
+                'quantity_g', dr.quantity_g,
+                'sort_order', dr.sort_order,
+                'created_at', dr.created_at,
+                'product',    (SELECT row_to_json(p) FROM public.products p WHERE p.id = dr.product_id),
+                'recipe',     (SELECT row_to_json(r) FROM public.recipes  r WHERE r.id = dr.recipe_id)
+              )
+              ORDER BY dr.sort_order
+            )
+            FROM public.diet_rows dr WHERE dr.section_id = ds.id
+          ), '[]'::jsonb)
+        )
+        ORDER BY ds.sort_order
+      )
+      FROM public.diet_sections ds WHERE ds.diet_table_id = dt.id
+    ), '[]'::jsonb)
+  )
+  FROM public.diet_tables dt
+  WHERE dt.id = p_table_id;
+$$;
+
+-- Return full workout table JSON
+CREATE OR REPLACE FUNCTION public.get_workout_table_detail(p_table_id uuid)
+RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT jsonb_build_object(
+    'id',               wt.id,
+    'user_id',          wt.user_id,
+    'name',             wt.name,
+    'created_at',       wt.created_at,
+    'updated_at',       wt.updated_at,
+    'workout_exercises', COALESCE((
+      SELECT jsonb_agg(
+        jsonb_build_object(
+          'id',               we.id,
+          'workout_table_id', we.workout_table_id,
+          'name',             we.name,
+          'sets',             we.sets,
+          'reps',             we.reps,
+          'calories',         we.calories,
+          'sort_order',       we.sort_order,
+          'created_at',       we.created_at,
+          'updated_at',       we.updated_at
+        )
+        ORDER BY we.sort_order
+      )
+      FROM public.workout_exercises we WHERE we.workout_table_id = wt.id
+    ), '[]'::jsonb)
+  )
+  FROM public.workout_tables wt
+  WHERE wt.id = p_table_id;
+$$;
+
+-- ==============================================================
 -- DONE
 -- Run this in Supabase SQL Editor: https://app.supabase.com
 -- Then configure Google OAuth in Authentication > Providers

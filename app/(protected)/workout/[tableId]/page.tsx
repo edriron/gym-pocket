@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { WorkoutTableEditor } from '@/components/workout/WorkoutTableEditor'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
+import type { WorkoutTableWithExercises } from '@/types'
 
 interface PageProps {
   params: Promise<{ tableId: string }>
@@ -13,35 +14,25 @@ export default async function WorkoutTablePage({ params }: PageProps) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: table } = await supabase
-    .from('workout_tables')
-    .select('*, workout_exercises(*)')
-    .eq('id', tableId)
-    .single()
+  // Fetch full table via SECURITY DEFINER function (bypasses nested RLS issues for shared users)
+  // and check ownership + share access in parallel
+  const [{ data: tableJson }, { data: ownerRow }, { data: shareRow }] = await Promise.all([
+    supabase.rpc('get_workout_table_detail', { p_table_id: tableId }),
+    supabase.from('workout_tables').select('id').eq('id', tableId).eq('user_id', user!.id).single(),
+    supabase.from('table_shares').select('access_mode')
+      .eq('table_id', tableId).eq('shared_with_id', user!.id).eq('table_type', 'workout').single(),
+  ])
 
-  if (!table) notFound()
+  if (!tableJson) notFound()
 
-  const isOwner = table.user_id === user!.id
-  let canEdit = isOwner
-  let hasAccess = isOwner
-
-  if (!isOwner) {
-    const { data: share } = await supabase
-      .from('table_shares')
-      .select('*')
-      .eq('table_id', tableId)
-      .eq('shared_with_id', user!.id)
-      .eq('table_type', 'workout')
-      .single()
-
-    if (share) {
-      hasAccess = true
-      canEdit = share.access_mode === 'edit'
-    }
-  }
+  const table = tableJson as unknown as WorkoutTableWithExercises
+  const isOwner = !!ownerRow
+  const hasAccess = isOwner || !!shareRow
+  const canEdit = isOwner || shareRow?.access_mode === 'edit'
 
   if (!hasAccess) notFound()
 
+  // Fetch shares (owner only)
   const { data: shares } = isOwner
     ? await supabase
         .from('table_shares')

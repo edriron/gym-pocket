@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Gym Pocket',
   description: 'Track your workouts, diet, and body weight in one place.',
+  icons: {
+    icon: '/icon.png',
+  },
 }
 
 export default function RootLayout({

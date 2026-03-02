@@ -1,10 +1,10 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { NAV_ITEMS } from '@/lib/constants'
-import { Dumbbell } from 'lucide-react'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -13,9 +13,7 @@ export function Sidebar() {
     <aside className="hidden md:flex h-screen w-60 flex-col border-r bg-card px-3 py-4 gap-2 sticky top-0">
       {/* Logo */}
       <div className="flex items-center gap-2 px-3 py-2 mb-2">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <Dumbbell className="size-4" />
-        </div>
+        <Image src="/icon.png" alt="Gym Pocket" width={32} height={32} className="rounded-lg" />
         <span className="font-bold text-lg">Gym Pocket</span>
       </div>
 

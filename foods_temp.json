@@ -1,0 +1,110 @@
+[
+  {
+    "name": "ביצה שלמה - טריה",
+    "source_url": "https://www.foodsdictionary.co.il/Products/1/%D7%91%D7%99%D7%A6%D7%94%20%D7%A9%D7%9C%D7%9E%D7%94%20-%20%D7%98%D7%A8%D7%99%D7%94",
+    "serving_basis": "100g",
+    "calories": 143,
+    "protein_g": 12.56,
+    "carbs_g": 0.72,
+    "fats_g": 9.51
+  },
+  {
+    "name": "בננה",
+    "source_url": "https://www.foodsdictionary.co.il/Products/1/%D7%91%D7%A0%D7%A0%D7%94",
+    "serving_basis": "100g",
+    "calories": 89,
+    "protein_g": 1.09,
+    "carbs_g": 22.84,
+    "fats_g": 0.33
+  },
+  {
+    "name": "עמק קלאסית - פרוסות גבינה חצי קשה, 28% שומן, תנובה",
+    "source_url": "https://www.foodsdictionary.co.il/Products/5/%D7%A4%D7%A8%D7%95%D7%A1%D7%95%D7%AA%20%D7%A2%D7%9E%D7%A7%2028%25%20%D7%A9%D7%95%D7%9E%D7%9F",
+    "serving_basis": "100g",
+    "calories": 344,
+    "protein_g": 23,
+    "carbs_g": 0,
+    "fats_g": 28
+  },
+  {
+    "name": "אורז יסמין קלאסי, סוגת",
+    "source_url": "https://www.foodsdictionary.co.il/Products/63/%D7%90%D7%95%D7%A8%D7%96%20%D7%99%D7%A1%D7%9E%D7%99%D7%9F%20%D7%A7%D7%9C%D7%90%D7%A1%D7%99",
+    "serving_basis": "100g",
+    "calories": 163,
+    "protein_g": 2.2,
+    "carbs_g": 23.8,
+    "fats_g": 6.6
+  },
+  {
+    "name": "פתיתים אפויים בצורת קוסקוס, שופרסל",
+    "source_url": "https://www.foodsdictionary.co.il/Products/34/%D7%A4%D7%AA%D7%99%D7%AA%D7%99%D7%9D%20%D7%90%D7%A4%D7%95%D7%99%D7%99%D7%9D%20%D7%91%D7%A6%D7%95%D7%A8%D7%AA%20%D7%A7%D7%95%D7%A1%D7%A7%D7%95%D7%A1",
+    "serving_basis": "100g",
+    "calories": 357,
+    "protein_g": 11,
+    "carbs_g": 75,
+    "fats_g": 0.8
+  },
+  {
+    "name": "מלפפון עם קליפה",
+    "source_url": "https://www.foodsdictionary.co.il/Products/1/%D7%9E%D7%9C%D7%A4%D7%A4%D7%95%D7%9F%20%D7%A2%D7%9D%20%D7%A7%D7%9C%D7%99%D7%A4%D7%94",
+    "serving_basis": "100g",
+    "calories": 15,
+    "protein_g": 0.65,
+    "carbs_g": 3.63,
+    "fats_g": 0.11
+  },
+  {
+    "name": "עגבנייה טרייה",
+    "source_url": "https://www.foodsdictionary.co.il/Products/1/%D7%A2%D7%92%D7%91%D7%A0%D7%99%D7%94",
+    "serving_basis": "100g",
+    "calories": 18,
+    "protein_g": 0.887,
+    "carbs_g": 3.923,
+    "fats_g": 0.2
+  },
+  {
+    "name": "פלפל אדום טרי",
+    "source_url": "https://www.foodsdictionary.co.il/Products/1/%D7%A4%D7%9C%D7%A4%D7%9C%20%D7%90%D7%93%D7%95%D7%9D",
+    "serving_basis": "100g",
+    "calories": 31,
+    "protein_g": 0.99,
+    "carbs_g": 6.03,
+    "fats_g": 0.3
+  },
+  {
+    "name": "חסה ערבית",
+    "source_url": "https://www.foodsdictionary.co.il/Products/1/%D7%97%D7%A1%D7%94%20%D7%A2%D7%A8%D7%91%D7%99%D7%AA",
+    "serving_basis": "100g",
+    "calories": 17,
+    "protein_g": 1.23,
+    "carbs_g": 3.29,
+    "fats_g": 0.3
+  },
+  {
+    "name": "בצל טרי",
+    "source_url": "https://www.foodsdictionary.co.il/Products/1/%D7%91%D7%A6%D7%9C",
+    "serving_basis": "100g",
+    "calories": 40,
+    "protein_g": 1.1,
+    "carbs_g": 9.34,
+    "fats_g": 0.1
+  },
+  {
+    "name": "בצל סגול",
+    "source_url": "https://www.foodsdictionary.co.il/Products/1/%D7%91%D7%A6%D7%9C%20%D7%A1%D7%92%D7%95%D7%9C",
+    "serving_basis": "100g",
+    "calories": 44,
+    "protein_g": 0.94,
+    "carbs_g": 9.93,
+    "fats_g": 0.1
+  },
+  {
+    "name": "טחינה 100% שומשום טהור, בארכה",
+    "source_url": "https://www.foodsdictionary.co.il/Products/81/%D7%98%D7%97%D7%99%D7%A0%D7%94%20100%25%20%D7%A9%D7%95%D7%9E%D7%A9%D7%95%D7%9D%20%D7%98%D7%94%D7%95%D7%A8",
+    "serving_basis": "100g",
+    "calories": 689,
+    "protein_g": 24,
+    "carbs_g": 12,
+    "fats_g": 60
+  }
+]

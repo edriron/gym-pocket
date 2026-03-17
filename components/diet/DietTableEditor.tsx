@@ -15,7 +15,7 @@ import { NutritionSummaryBar } from '@/components/shared/NutritionSummaryBar'
 import { DietSection } from './DietSection'
 import { ShareTableDialog } from './ShareTableDialog'
 import { addDietSection, renameDietTable } from '@/app/(protected)/diet/actions'
-import { sumNutrition, calcProductNutrition } from '@/lib/nutrition'
+import { sumNutrition } from '@/lib/nutrition'
 import { MEAL_SECTION_PRESETS } from '@/lib/constants'
 import type { DietTableWithSections, Product, Recipe, TableShare } from '@/types'
 
@@ -40,14 +40,23 @@ export function DietTableEditor({
   const [tableName, setTableName] = useState(table.name)
   const [editingName, setEditingName] = useState(false)
 
-  // Grand-total nutrition across all sections
+  // Grand-total nutrition across all sections.
+  // Recipe nutrition is stored per 100g (pre-computed in page server component).
   const allRows = table.diet_sections.flatMap((s) => s.diet_rows)
   const grandTotal = sumNutrition(
-    allRows.map((row) =>
-      row.product
-        ? calcProductNutrition(row.product, row.quantity_g)
-        : { calories: 0, carbs_g: 0, protein_g: 0, fats_g: 0 }
-    )
+    allRows.map((row) => {
+      const per100g = row.product
+        ? { calories: row.product.calories, carbs_g: row.product.carbs_g, protein_g: row.product.protein_g, fats_g: row.product.fats_g }
+        : row.recipe?.nutrition ?? null
+      if (!per100g) return { calories: 0, carbs_g: 0, protein_g: 0, fats_g: 0 }
+      const factor = row.quantity_g / 100
+      return {
+        calories: Math.round(per100g.calories * factor * 10) / 10,
+        carbs_g: Math.round(per100g.carbs_g * factor * 10) / 10,
+        protein_g: Math.round(per100g.protein_g * factor * 10) / 10,
+        fats_g: Math.round(per100g.fats_g * factor * 10) / 10,
+      }
+    })
   )
 
   async function handleAddSection(name: string) {

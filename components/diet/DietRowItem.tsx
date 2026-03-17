@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { updateDietRowQty, deleteDietRow } from '@/app/(protected)/diet/actions'
-import { calcProductNutrition } from '@/lib/nutrition'
 import { fmtNum } from '@/lib/nutrition'
 import type { DietRowWithDetails } from '@/types'
 
@@ -22,10 +21,20 @@ export function DietRowItem({ row, dietTableId, canEdit }: DietRowItemProps) {
   const [saving, setSaving] = useState(false)
   const name = row.product?.name ?? row.recipe?.name ?? 'Unknown'
 
-  // Calculate nutrition for this row
-  const nutrition = row.product
-    ? calcProductNutrition(row.product, qty)
-    : null // recipe nutrition would need to be passed from parent
+  // Calculate nutrition for this row.
+  // Recipe nutrition is stored per 100g (pre-computed in page server component),
+  // so the same scaling logic applies for both products and recipes.
+  const per100g = row.product
+    ? { calories: row.product.calories, carbs_g: row.product.carbs_g, protein_g: row.product.protein_g, fats_g: row.product.fats_g }
+    : row.recipe?.nutrition ?? null
+  const nutrition = per100g
+    ? {
+        calories: Math.round(per100g.calories * qty / 100 * 10) / 10,
+        carbs_g: Math.round(per100g.carbs_g * qty / 100 * 10) / 10,
+        protein_g: Math.round(per100g.protein_g * qty / 100 * 10) / 10,
+        fats_g: Math.round(per100g.fats_g * qty / 100 * 10) / 10,
+      }
+    : null
 
   async function handleQtyBlur() {
     if (qty === row.quantity_g) return
@@ -46,7 +55,7 @@ export function DietRowItem({ row, dietTableId, canEdit }: DietRowItemProps) {
   return (
     <TableRow>
       <TableCell className="font-medium">
-        <div>
+        <div className="truncate">
           {name}
           {row.recipe && (
             <span className="ml-1 text-xs text-muted-foreground">(recipe)</span>

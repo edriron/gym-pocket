@@ -45,9 +45,50 @@ export default async function DietTablePage({ params }: PageProps) {
     supabase.from('recipes').select('id, name, created_by, description, created_at, updated_at').order('name'),
   ])
 
+  // Collect unique recipe IDs used in this table's rows
+  const recipeIds = [
+    ...new Set(
+      (table.diet_sections ?? [])
+        .flatMap((s) => s.diet_rows)
+        .filter((r) => r.recipe_id)
+        .map((r) => r.recipe_id as string)
+    ),
+  ]
+
+  // Fetch nutrition for each recipe in parallel
+  const nutritionMap = new Map<string, { calories: number; carbs_g: number; protein_g: number; fats_g: number }>()
+  if (recipeIds.length > 0) {
+    const results = await Promise.all(
+      recipeIds.map((id) => supabase.rpc('get_recipe_nutrition', { p_recipe_id: id }).single())
+    )
+    recipeIds.forEach((id, i) => {
+      const n = results[i].data
+      if (n && Number(n.total_weight_g) > 0) {
+        // Store as per-100g so DietRowItem can scale identically to products
+        const factor = 100 / Number(n.total_weight_g)
+        nutritionMap.set(id, {
+          calories: Number(n.calories) * factor,
+          carbs_g: Number(n.carbs_g) * factor,
+          protein_g: Number(n.protein_g) * factor,
+          fats_g: Number(n.fats_g) * factor,
+        })
+      }
+    })
+  }
+
+  // Attach nutrition to recipe rows
   const sortedTable = {
     ...table,
-    diet_sections: [...(table.diet_sections ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+    diet_sections: [...(table.diet_sections ?? [])]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((section) => ({
+        ...section,
+        diet_rows: section.diet_rows.map((row) =>
+          row.recipe_id && row.recipe
+            ? { ...row, recipe: { ...row.recipe, nutrition: nutritionMap.get(row.recipe_id) } }
+            : row
+        ),
+      })),
   }
 
   return (

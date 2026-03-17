@@ -94,16 +94,17 @@ export async function addDietRow(
 ) {
   const supabase = await createClient()
 
-  const { error } = await supabase.from('diet_rows').insert({
+  const { data, error } = await supabase.from('diet_rows').insert({
     section_id: sectionId,
     product_id: itemType === 'product' ? itemId : null,
     recipe_id: itemType === 'recipe' ? itemId : null,
     quantity_g: quantityG,
     sort_order: sortOrder,
-  })
+  }).select('id').single()
 
   if (error) return { error: error.message }
   revalidatePath(`/diet/${dietTableId}`)
+  return { id: data.id }
 }
 
 export async function updateDietRowQty(id: string, quantityG: number, dietTableId: string) {

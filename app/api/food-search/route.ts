@@ -1,9 +1,54 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-// Cache results in-process for the lifetime of the server (avoids hammering OFF)
-const cache = new Map<string, { ts: number; data: unknown[] }>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+type FoodResult = { name: string; thumb: string; imageUrl: string };
+
+// Per-source in-process cache
+const cache = new Map<string, { ts: number; data: FoodResult[] }>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+async function searchPexels(query: string): Promise<FoodResult[]> {
+  const apiKey = process.env.PEXELS_API_KEY;
+  if (!apiKey) throw new Error("PEXELS_API_KEY is not configured");
+
+  const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=12&orientation=square`;
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(15_000),
+    headers: { Authorization: apiKey },
+  });
+  if (!res.ok) throw new Error(`Pexels error (${res.status})`);
+
+  const json = await res.json();
+  return ((json.photos ?? []) as any[]).map((p) => ({
+    name: p.alt || query,
+    thumb: p.src.small as string,
+    imageUrl: p.src.large as string,
+  }));
+}
+
+async function searchOpenFoodFacts(query: string): Promise<FoodResult[]> {
+  const url =
+    `https://search.openfoodfacts.org/search` +
+    `?q=${encodeURIComponent(query)}&page_size=20`;
+
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(20_000),
+    headers: { "User-Agent": "GymPocket/1.0" },
+  });
+  if (!res.ok) throw new Error(`Open Food Facts error (${res.status})`);
+
+  const json = await res.json();
+  return ((json.hits ?? json.products ?? []) as any[])
+    .map((p) => {
+      const name: string = p.product_name || p.abbreviated_product_name || "";
+      const thumb: string =
+        p.image_front_small_url || p.image_thumb_url || p.image_small_url || p.image_url || "";
+      const imageUrl: string = p.image_front_url || p.image_url || thumb;
+      return { name, thumb, imageUrl };
+    })
+    .filter((p) => p.thumb && p.name)
+    .slice(0, 12);
+}
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -12,50 +57,24 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim().toLowerCase();
+  const source = searchParams.get("source") === "off" ? "off" : "pexels";
   if (!query) return NextResponse.json({ error: "Missing query" }, { status: 400 });
 
-  // Return cached result if fresh
-  const cached = cache.get(query);
+  const cacheKey = `${source}:${query}`;
+  const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
     return NextResponse.json(cached.data);
   }
 
-  // Open Food Facts dedicated search service (faster and respects query terms)
-  const url =
-    `https://search.openfoodfacts.org/search` +
-    `?q=${encodeURIComponent(query)}` +
-    `&page_size=20`; // fetch more to have enough after filtering out image-less results
-
-  let res: Response;
+  let results: FoodResult[];
   try {
-    res = await fetch(url, {
-      signal: AbortSignal.timeout(20_000),
-      headers: { "User-Agent": "GymPocket/1.0" },
-    });
-  } catch {
-    return NextResponse.json({ error: "Search timed out. Try again." }, { status: 504 });
+    results = source === "off"
+      ? await searchOpenFoodFacts(query)
+      : await searchPexels(query);
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message ?? "Search failed." }, { status: 502 });
   }
 
-  if (!res.ok) {
-    return NextResponse.json({ error: `Upstream error (${res.status})` }, { status: 502 });
-  }
-
-  const json = await res.json();
-  const results = ((json.hits ?? json.products ?? []) as any[])
-    .map((p) => {
-      const name: string = p.product_name || p.abbreviated_product_name || ''
-      const thumb: string =
-        p.image_front_small_url || p.image_thumb_url || p.image_small_url || p.image_url || ''
-      const imageUrl: string =
-        p.image_front_url || p.image_url || thumb
-      return { name, thumb, imageUrl }
-    })
-    .filter((p) => p.thumb && p.name)
-    .slice(0, 12);
-
-  cache.set(query, { ts: Date.now(), data: results });
-
-  return NextResponse.json(results, {
-    headers: { "Cache-Control": "public, s-maxage=300" },
-  });
+  cache.set(cacheKey, { ts: Date.now(), data: results });
+  return NextResponse.json(results, { headers: { "Cache-Control": "public, s-maxage=300" } });
 }

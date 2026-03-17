@@ -68,11 +68,13 @@ function ProductImageArea({ imageUrl }: { imageUrl: string | null }) {
 
 function ProductCard({
   product,
+  imageUrl,
   isOwner,
   onEdit,
   onDelete,
 }: {
   product: Product
+  imageUrl: string | null
   isOwner: boolean
   onEdit: (p: Product) => void
   onDelete: (id: string) => void
@@ -87,7 +89,7 @@ function ProductCard({
   return (
     <div className="group relative bg-card border rounded-xl overflow-hidden hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-200">
       {/* Image area */}
-      <ProductImageArea imageUrl={product.image_url ?? null} />
+      <ProductImageArea imageUrl={imageUrl} />
 
       {/* Content */}
       <div className="p-3 space-y-2.5">
@@ -157,6 +159,8 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [view, setView] = useState<'list' | 'grid'>('list')
+  // Local image overrides so card/list updates immediately after upload without a page refresh
+  const [imageOverrides, setImageOverrides] = useState<Record<string, string | null>>({})
 
   useEffect(() => {
     const saved = localStorage.getItem(VIEW_KEY)
@@ -240,6 +244,7 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
               <ProductCard
                 key={product.id}
                 product={product}
+                imageUrl={imageOverrides[product.id] !== undefined ? imageOverrides[product.id] : (product.image_url ?? null)}
                 isOwner={product.created_by === currentUserId}
                 onEdit={setEditProduct}
                 onDelete={setDeleteId}
@@ -275,9 +280,9 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
                     <TableCell>
                       <div className="flex items-center gap-2.5">
                         <div className="size-8 rounded-lg overflow-hidden bg-muted/40 flex items-center justify-center shrink-0 border">
-                          {product.image_url ? (
+                          {(imageOverrides[product.id] !== undefined ? imageOverrides[product.id] : product.image_url) ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={product.image_url} alt="" className="size-full object-cover" />
+                            <img src={(imageOverrides[product.id] !== undefined ? imageOverrides[product.id] : product.image_url)!} alt="" className="size-full object-cover" />
                           ) : (
                             <ShoppingBasket className="size-4 text-amber-600 dark:text-amber-400" />
                           )}
@@ -343,6 +348,7 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
         onOpenChange={(o) => !o && setEditProduct(null)}
         product={editProduct}
         onSubmit={handleUpdate}
+        onImageUpdate={(id, url) => setImageOverrides((prev) => ({ ...prev, [id]: url }))}
       />
       <ConfirmDialog
         open={!!deleteId}

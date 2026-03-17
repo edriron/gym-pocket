@@ -48,6 +48,7 @@ interface ProductDialogProps {
   onOpenChange: (open: boolean) => void
   product?: Product | null
   onSubmit: (values: ProductFormValues) => Promise<void>
+  onImageUpdate?: (productId: string, url: string | null) => void
 }
 
 const DEFAULT_VALUES: ProductFormValues = {
@@ -62,12 +63,17 @@ const DEFAULT_VALUES: ProductFormValues = {
 
 // ── Food image search (proxied through our API to avoid CORS) ──
 type FoodResult = { name: string; thumb: string; imageUrl: string }
+type SearchSource = 'pexels' | 'off'
 
-async function searchFoodDatabase(query: string): Promise<FoodResult[]> {
-  const res = await fetch(`/api/food-search?q=${encodeURIComponent(query)}`, {
-    signal: AbortSignal.timeout(25_000),
-  })
-  if (!res.ok) throw new Error('Search failed')
+async function searchFoodDatabase(query: string, source: SearchSource): Promise<FoodResult[]> {
+  const res = await fetch(
+    `/api/food-search?q=${encodeURIComponent(query)}&source=${source}`,
+    { signal: AbortSignal.timeout(25_000) },
+  )
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}))
+    throw new Error(json.error ?? 'Search failed')
+  }
   return res.json()
 }
 
@@ -101,7 +107,7 @@ function ImageSection({
         .getPublicUrl(product.id)
       const res = await saveProductImageUrl(product.id, publicUrl)
       if (res?.error) { toast.error(res.error); return }
-      onImageChange(publicUrl)
+      onImageChange(`${publicUrl}?t=${Date.now()}`)
       toast.success('Image uploaded')
     } finally {
       setLoading(false)
@@ -117,7 +123,7 @@ function ImageSection({
     try {
       const res = await fetchAndUploadProductImage(product.id, urlInput.trim())
       if ('error' in res) { toast.error(res.error); return }
-      onImageChange(res.publicUrl)
+      onImageChange(`${res.publicUrl}?t=${Date.now()}`)
       setUrlInput('')
       toast.success('Image uploaded')
     } finally {
@@ -129,15 +135,17 @@ function ImageSection({
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<FoodResult[]>([])
   const [searching, setSearching] = useState(false)
+  const [searchSource, setSearchSource] = useState<SearchSource>('pexels')
   async function handleSearch() {
     if (!searchQuery.trim()) return
     setSearching(true)
+    setSearchResults([])
     try {
-      const results = await searchFoodDatabase(searchQuery.trim())
+      const results = await searchFoodDatabase(searchQuery.trim(), searchSource)
       setSearchResults(results)
       if (results.length === 0) toast.info('No results found.')
-    } catch {
-      toast.error('Search failed. Try again.')
+    } catch (err: any) {
+      toast.error(err.message ?? 'Search failed. Try again.')
     } finally {
       setSearching(false)
     }
@@ -147,7 +155,7 @@ function ImageSection({
     try {
       const res = await fetchAndUploadProductImage(product.id, imageUrl)
       if ('error' in res) { toast.error(res.error); return }
-      onImageChange(res.publicUrl)
+      onImageChange(`${res.publicUrl}?t=${Date.now()}`)
       setSearchResults([])
       setSearchQuery('')
       toast.success('Image uploaded')
@@ -198,7 +206,7 @@ function ImageSection({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={currentImageUrl}
-                  alt="Product"
+                  alt=""
                   className="size-full object-cover"
                 />
               ) : (
@@ -283,9 +291,26 @@ function ImageSection({
 
             {/* Food database search */}
             <TabsContent value="search" className="mt-3 space-y-3">
+              {/* Source toggle */}
+              <div className="flex items-center rounded-lg border bg-muted/40 p-1 gap-0.5 w-fit">
+                <button
+                  type="button"
+                  onClick={() => { setSearchSource('pexels'); setSearchResults([]) }}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${searchSource === 'pexels' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Pexels
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSearchSource('off'); setSearchResults([]) }}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${searchSource === 'off' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Open Food Facts
+                </button>
+              </div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="e.g. banana, oats, chicken"
+                  placeholder={searchSource === 'pexels' ? 'e.g. banana, oats, chicken' : 'e.g. banana, oats, chicken'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearch())}
@@ -315,7 +340,7 @@ function ImageSection({
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={r.thumb}
-                        alt={r.name}
+                        alt=""
                         className="size-full object-cover"
                         loading="lazy"
                       />
@@ -329,16 +354,12 @@ function ImageSection({
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                Powered by{' '}
-                <a
-                  href="https://world.openfoodfacts.org"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2"
-                >
-                  Open Food Facts
-                </a>
-                . Click any result to use it.
+                {searchSource === 'pexels' ? (
+                  <>Powered by <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Pexels</a>.</>
+                ) : (
+                  <>Powered by <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Open Food Facts</a>.</>
+                )}{' '}
+                Click any result to use it.
               </p>
             </TabsContent>
           </Tabs>
@@ -349,9 +370,14 @@ function ImageSection({
 }
 
 // ── Main dialog ────────────────────────────────────────────────
-export function ProductDialog({ open, onOpenChange, product, onSubmit }: ProductDialogProps) {
+export function ProductDialog({ open, onOpenChange, product, onSubmit, onImageUpdate }: ProductDialogProps) {
   const [loading, setLoading] = useState(false)
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null)
+
+  function handleImageChange(url: string | null) {
+    setCurrentImageUrl(url)
+    if (product) onImageUpdate?.(product.id, url)
+  }
   const isEdit = !!product
 
   const form = useForm<ProductFormValues>({
@@ -537,7 +563,7 @@ export function ProductDialog({ open, onOpenChange, product, onSubmit }: Product
               <ImageSection
                 product={product}
                 currentImageUrl={currentImageUrl}
-                onImageChange={setCurrentImageUrl}
+                onImageChange={handleImageChange}
               />
             )}
 

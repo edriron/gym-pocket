@@ -3,7 +3,38 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import sharp from "sharp";
 import type { ProductFormValues } from "@/lib/validations";
+
+const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+
+/** Normalise MIME type and resize to ≤ 5 MB, converting everything to JPEG. */
+async function normaliseImage(input: ArrayBuffer, _contentType: string): Promise<{ buffer: Buffer; contentType: "image/jpeg" }> {
+  const buf = await sharp(Buffer.from(input))
+    .rotate()                  // auto-orient from EXIF
+    .jpeg({ quality: 85 })    // convert to JPEG
+    .toBuffer();
+
+  if (buf.byteLength <= MAX_BYTES) {
+    return { buffer: buf, contentType: "image/jpeg" };
+  }
+
+  // Progressively lower quality until under 5 MB
+  for (const quality of [70, 55, 40, 25]) {
+    const smaller = await sharp(Buffer.from(input)).rotate().jpeg({ quality }).toBuffer();
+    if (smaller.byteLength <= MAX_BYTES) {
+      return { buffer: smaller, contentType: "image/jpeg" };
+    }
+  }
+
+  // Last resort: also shrink dimensions to 1200px wide
+  const resized = await sharp(Buffer.from(input))
+    .rotate()
+    .resize({ width: 1200, withoutEnlargement: true })
+    .jpeg({ quality: 60 })
+    .toBuffer();
+  return { buffer: resized, contentType: "image/jpeg" };
+}
 
 export async function addProduct(values: ProductFormValues) {
   const supabase = await createClient();
@@ -159,10 +190,18 @@ export async function fetchAndUploadProductImage(
   }
   if (!response.ok) return { error: `Failed to fetch image (${response.status}).` };
 
-  const contentType = response.headers.get("content-type") ?? "image/jpeg";
-  if (!contentType.startsWith("image/")) return { error: "URL does not point to an image." };
+  const rawContentType = response.headers.get("content-type") ?? "image/jpeg";
+  if (!rawContentType.startsWith("image/")) return { error: "URL does not point to an image." };
 
-  const buffer = await response.arrayBuffer();
+  const raw = await response.arrayBuffer();
+
+  let buffer: Buffer;
+  let contentType: string;
+  try {
+    ({ buffer, contentType } = await normaliseImage(raw, rawContentType));
+  } catch {
+    return { error: "Could not process image. The file may be corrupt or unsupported." };
+  }
 
   const svc = serviceClient();
   const { error: uploadError } = await svc.storage

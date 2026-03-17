@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { checkPublicApiAuth } from "../_auth";
+import { renderApiPage } from "../_render";
 
 export async function GET(request: Request) {
   const auth = checkPublicApiAuth(request);
   if (!auth.ok) {
+    if (request.headers.get("accept")?.includes("text/html")) {
+      return new Response(
+        `<!DOCTYPE html><html><body style="font-family:sans-serif;padding:40px;color:#dc2626"><h2>401 Unauthorized</h2><p>${auth.error}</p></body></html>`,
+        { status: 401, headers: { "Content-Type": "text/html" } }
+      );
+    }
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
@@ -25,10 +32,7 @@ export async function GET(request: Request) {
   ]);
 
   if (productsError || recipesError) {
-    return NextResponse.json(
-      { error: "Failed to fetch data" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to fetch data" }, { status: 500 });
   }
 
   const products = (productsData ?? []).map((p) => {
@@ -64,19 +68,26 @@ export async function GET(request: Request) {
     return {
       name: recipe.name,
       type: "recipe" as const,
-      calories: nutrition
-        ? Math.round(Number(nutrition.calories) * 10) / 10
-        : 0,
+      calories: nutrition ? Math.round(Number(nutrition.calories) * 10) / 10 : 0,
       carbs_g: nutrition ? Math.round(Number(nutrition.carbs_g) * 10) / 10 : 0,
-      protein_g: nutrition
-        ? Math.round(Number(nutrition.protein_g) * 10) / 10
-        : 0,
+      protein_g: nutrition ? Math.round(Number(nutrition.protein_g) * 10) / 10 : 0,
       fats_g: nutrition ? Math.round(Number(nutrition.fats_g) * 10) / 10 : 0,
-      measure_g: nutrition
-        ? Math.round(Number(nutrition.total_weight_g) * 10) / 10
-        : 0,
+      measure_g: nutrition ? Math.round(Number(nutrition.total_weight_g) * 10) / 10 : 0,
     };
   });
 
-  return NextResponse.json([...products, ...recipeItems]);
+  const combined = [...products, ...recipeItems];
+
+  if (request.headers.get("accept")?.includes("text/html")) {
+    const keyParam = new URL(request.url).searchParams.get("key") ?? undefined;
+    return renderApiPage({
+      title: "All Items",
+      description: "All products and recipes combined, sorted alphabetically within each group.",
+      currentPath: "/api/public/all",
+      items: combined,
+      keyParam,
+    });
+  }
+
+  return NextResponse.json(combined);
 }

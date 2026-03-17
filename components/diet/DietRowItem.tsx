@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash2, ChefHat } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,9 +21,6 @@ export function DietRowItem({ row, dietTableId, canEdit }: DietRowItemProps) {
   const [saving, setSaving] = useState(false)
   const name = row.product?.name ?? row.recipe?.name ?? 'Unknown'
 
-  // Calculate nutrition for this row.
-  // Recipe nutrition is stored per 100g (pre-computed in page server component),
-  // so the same scaling logic applies for both products and recipes.
   const per100g = row.product
     ? { calories: row.product.calories, carbs_g: row.product.carbs_g, protein_g: row.product.protein_g, fats_g: row.product.fats_g }
     : row.recipe?.nutrition ?? null
@@ -42,7 +39,7 @@ export function DietRowItem({ row, dietTableId, canEdit }: DietRowItemProps) {
     const result = await updateDietRowQty(row.id, qty, dietTableId)
     if (result?.error) {
       toast.error(result.error)
-      setQty(row.quantity_g) // revert
+      setQty(row.quantity_g)
     }
     setSaving(false)
   }
@@ -53,16 +50,18 @@ export function DietRowItem({ row, dietTableId, canEdit }: DietRowItemProps) {
   }
 
   return (
-    <TableRow>
-      <TableCell className="font-medium">
-        <div className="truncate">
-          {name}
+    <TableRow className="group hover:bg-muted/40 transition-colors">
+      <TableCell className="font-medium py-2.5">
+        <div className="flex items-center gap-2 truncate">
+          <span className="truncate">{name}</span>
           {row.recipe && (
-            <span className="ml-1 text-xs text-muted-foreground">(recipe)</span>
+            <span className="inline-flex items-center gap-0.5 shrink-0 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
+              <ChefHat className="size-2.5" /> recipe
+            </span>
           )}
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="py-2.5">
         {canEdit ? (
           <div className="flex items-center gap-1">
             <Input
@@ -78,27 +77,30 @@ export function DietRowItem({ row, dietTableId, canEdit }: DietRowItemProps) {
             <span className="text-xs text-muted-foreground">g</span>
           </div>
         ) : (
-          <span className="text-sm">{qty}g</span>
+          <span className="text-sm text-muted-foreground">{qty}g</span>
         )}
       </TableCell>
-      <TableCell className="text-right tabular-nums text-sm">
-        {nutrition ? fmtNum(nutrition.calories) : '—'}
+      <TableCell className="text-right tabular-nums text-sm py-2.5">
+        {nutrition ? (
+          <span className="font-semibold text-red-600 dark:text-red-400">{fmtNum(nutrition.calories)}</span>
+        ) : '—'}
       </TableCell>
-      <TableCell className="text-right tabular-nums text-sm hidden sm:table-cell">
+      <TableCell className="text-right tabular-nums text-sm py-2.5 hidden sm:table-cell text-muted-foreground">
         {nutrition ? fmtNum(nutrition.carbs_g) : '—'}
       </TableCell>
-      <TableCell className="text-right tabular-nums text-sm hidden sm:table-cell">
+      <TableCell className="text-right tabular-nums text-sm py-2.5 hidden sm:table-cell text-muted-foreground">
         {nutrition ? fmtNum(nutrition.protein_g) : '—'}
       </TableCell>
-      <TableCell className="text-right tabular-nums text-sm hidden sm:table-cell">
+      <TableCell className="text-right tabular-nums text-sm py-2.5 hidden sm:table-cell text-muted-foreground">
         {nutrition ? fmtNum(nutrition.fats_g) : '—'}
       </TableCell>
       {canEdit && (
-        <TableCell>
+        <TableCell className="py-2.5">
           <Button
             variant="ghost"
             size="icon-xs"
             onClick={handleDelete}
+            className="opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <Trash2 className="size-3 text-destructive" />
           </Button>

@@ -22,6 +22,7 @@ import {
   renameDietSection,
 } from "@/app/(protected)/diet/actions";
 import { sumNutrition } from "@/lib/nutrition";
+import { cn } from "@/lib/utils";
 import type {
   DietSectionWithRows,
   DietRowWithDetails,
@@ -29,6 +30,20 @@ import type {
   Recipe,
   NutritionValues,
 } from "@/types";
+
+// Full static class strings required for Tailwind JIT
+const SECTION_ACCENT: Record<string, { border: string; headerBg: string; emoji: string }> = {
+  "Breakfast":       { border: "border-l-amber-400",   headerBg: "bg-amber-50/80 dark:bg-amber-950/20",   emoji: "🌅" },
+  "Morning Snack":   { border: "border-l-green-400",   headerBg: "bg-green-50/80 dark:bg-green-950/20",   emoji: "🥗" },
+  "Lunch":           { border: "border-l-sky-400",     headerBg: "bg-sky-50/80 dark:bg-sky-950/20",       emoji: "☀️" },
+  "Afternoon Snack": { border: "border-l-violet-400",  headerBg: "bg-violet-50/80 dark:bg-violet-950/20", emoji: "🍎" },
+  "Dinner":          { border: "border-l-rose-400",    headerBg: "bg-rose-50/80 dark:bg-rose-950/20",     emoji: "🌙" },
+  "Evening Snack":   { border: "border-l-cyan-400",    headerBg: "bg-cyan-50/80 dark:bg-cyan-950/20",     emoji: "🫖" },
+  "Pre-Workout":     { border: "border-l-lime-500",    headerBg: "bg-lime-50/80 dark:bg-lime-950/20",     emoji: "⚡" },
+  "Post-Workout":    { border: "border-l-orange-400",  headerBg: "bg-orange-50/80 dark:bg-orange-950/20", emoji: "💪" },
+};
+
+const DEFAULT_ACCENT = { border: "border-l-primary", headerBg: "bg-primary/5", emoji: "🍽️" };
 
 interface DietSectionProps {
   section: DietSectionWithRows;
@@ -50,11 +65,8 @@ export function DietSection({
   const [editingName, setEditingName] = useState(false);
   const [sectionName, setSectionName] = useState(section.name);
   const [showPicker, setShowPicker] = useState(false);
-  const [localRows, setLocalRows] = useState<DietRowWithDetails[]>(
-    section.diet_rows,
-  );
+  const [localRows, setLocalRows] = useState<DietRowWithDetails[]>(section.diet_rows);
 
-  // Sync local rows when server data updates (after revalidatePath)
   useEffect(() => {
     setLocalRows(section.diet_rows);
   }, [section.diet_rows]);
@@ -62,16 +74,12 @@ export function DietSection({
   const productMap = new Map(products.map((p) => [p.id, p]));
   const recipeMap = new Map(recipes.map((r) => [r.id, r]));
 
-  // Calculate section nutrition from local rows.
-  // Recipe nutrition is stored per 100g (pre-computed in page server component).
+  // Use the saved name for color lookup so renaming mid-edit doesn't flash
+  const accent = SECTION_ACCENT[section.name] ?? DEFAULT_ACCENT;
+
   const rowNutritions: NutritionValues[] = localRows.map((row) => {
     const per100g = row.product
-      ? {
-          calories: row.product.calories,
-          carbs_g: row.product.carbs_g,
-          protein_g: row.product.protein_g,
-          fats_g: row.product.fats_g,
-        }
+      ? { calories: row.product.calories, carbs_g: row.product.carbs_g, protein_g: row.product.protein_g, fats_g: row.product.fats_g }
       : (row.recipe?.nutrition ?? null);
     if (!per100g) return { calories: 0, carbs_g: 0, protein_g: 0, fats_g: 0 };
     const factor = row.quantity_g / 100;
@@ -84,18 +92,11 @@ export function DietSection({
   });
   const sectionNutrition = sumNutrition(rowNutritions);
 
-  async function handleAddRow(item: {
-    id: string;
-    name: string;
-    type: "product" | "recipe";
-  }) {
-    const product =
-      item.type === "product" ? (productMap.get(item.id) ?? null) : null;
-    const recipe =
-      item.type === "recipe" ? (recipeMap.get(item.id) ?? null) : null;
+  async function handleAddRow(item: { id: string; name: string; type: "product" | "recipe" }) {
+    const product = item.type === "product" ? (productMap.get(item.id) ?? null) : null;
+    const recipe = item.type === "recipe" ? (recipeMap.get(item.id) ?? null) : null;
     const defaultQty = product?.serving_size_g ?? 100;
 
-    // Optimistic row — immediately shown while server call is in flight
     const optimisticId = `optimistic-${Date.now()}`;
     const optimisticRow: DietRowWithDetails = {
       id: optimisticId,
@@ -112,14 +113,7 @@ export function DietSection({
     setLocalRows((prev) => [...prev, optimisticRow]);
     setShowPicker(false);
 
-    const result = await addDietRow(
-      section.id,
-      dietTableId,
-      item.id,
-      item.type,
-      defaultQty,
-      localRows.length,
-    );
+    const result = await addDietRow(section.id, dietTableId, item.id, item.type, defaultQty, localRows.length);
 
     if (result?.error) {
       toast.error(result.error);
@@ -135,34 +129,34 @@ export function DietSection({
   }
 
   async function handleRename() {
-    if (sectionName === section.name) {
-      setEditingName(false);
-      return;
-    }
-    const result = await renameDietSection(
-      section.id,
-      sectionName,
-      dietTableId,
-    );
+    if (sectionName === section.name) { setEditingName(false); return; }
+    const result = await renameDietSection(section.id, sectionName, dietTableId);
     if (result?.error) toast.error(result.error);
     setEditingName(false);
   }
 
   return (
-    <div className="rounded-xl border overflow-hidden">
+    <div className={cn("rounded-xl border border-l-4 overflow-hidden", accent.border)}>
+
       {/* Section header */}
-      <div className="flex items-center justify-between gap-2 bg-muted/40 px-4 py-2.5">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+      <div className={cn("group/header flex items-center justify-between gap-2 px-4 py-3", accent.headerBg)}>
+
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          {/* Collapse toggle */}
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            title={expanded ? "Collapse" : "Expand"}
           >
-            {expanded ? (
-              <ChevronUp className="size-4" />
-            ) : (
-              <ChevronDown className="size-4" />
-            )}
+            {expanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
           </button>
+
+          {/* Emoji */}
+          <span className="text-base leading-none select-none shrink-0" aria-hidden>
+            {accent.emoji}
+          </span>
+
+          {/* Name (editable) */}
           {editingName && canEdit ? (
             <Input
               value={sectionName}
@@ -170,57 +164,64 @@ export function DietSection({
               onBlur={handleRename}
               onKeyDown={(e) => e.key === "Enter" && handleRename()}
               autoFocus
-              className="h-7 text-sm font-semibold w-48"
+              className="h-7 text-sm font-semibold w-44"
             />
           ) : (
             <button
-              className="font-semibold text-sm hover:underline text-left"
+              className="font-semibold text-sm hover:underline text-left truncate"
               onClick={() => canEdit && setEditingName(true)}
+              title={canEdit ? "Click to rename" : undefined}
             >
               {sectionName}
             </button>
           )}
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {canEdit && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => setShowPicker((v) => !v)}
-                title="Add item"
-              >
-                <Plus className="size-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => setEditingName(true)}
-                title="Rename section"
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => setDeleteOpen(true)}
-                title="Delete section"
-              >
-                <Trash2 className="size-3.5 text-destructive" />
-              </Button>
-            </>
+
+          {/* Row count badge */}
+          {localRows.length > 0 && (
+            <span className="shrink-0 text-xs text-muted-foreground font-medium tabular-nums">
+              {localRows.length}
+            </span>
           )}
         </div>
+
+        {/* Action buttons — visible on hover */}
+        {canEdit && (
+          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover/header:opacity-100 transition-opacity">
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => setShowPicker((v) => !v)}
+              title="Add item"
+              className="hover:bg-black/10 dark:hover:bg-white/10"
+            >
+              <Plus className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => setEditingName(true)}
+              title="Rename section"
+              className="hover:bg-black/10 dark:hover:bg-white/10"
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => setDeleteOpen(true)}
+              title="Delete section"
+              className="hover:bg-black/10 dark:hover:bg-white/10"
+            >
+              <Trash2 className="size-3.5 text-destructive" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Ingredient picker */}
       {showPicker && canEdit && (
-        <div className="px-4 py-2 border-b bg-background">
-          <IngredientPicker
-            products={products}
-            recipes={recipes}
-            onSelect={handleAddRow}
-          />
+        <div className="px-4 py-3 border-b bg-muted/30">
+          <IngredientPicker products={products} recipes={recipes} onSelect={handleAddRow} />
         </div>
       )}
 
@@ -229,32 +230,28 @@ export function DietSection({
         <div>
           <Table className="table-fixed">
             <TableHeader>
-              <TableRow>
-                <TableHead className="w-80">Item</TableHead>
-                <TableHead className="w-28">Qty</TableHead>
-                <TableHead className="w-16 text-right">kcal</TableHead>
-                <TableHead className="w-16 text-right hidden sm:table-cell">
-                  Carbs
-                </TableHead>
-                <TableHead className="w-16 text-right hidden sm:table-cell">
-                  Protein
-                </TableHead>
-                <TableHead className="w-16 text-right hidden sm:table-cell">
-                  Fats
-                </TableHead>
+              <TableRow className="hover:bg-transparent border-b">
+                <TableHead className="w-80 text-xs uppercase tracking-wide text-muted-foreground/70 font-semibold">Item</TableHead>
+                <TableHead className="w-28 text-xs uppercase tracking-wide text-muted-foreground/70 font-semibold">Qty</TableHead>
+                <TableHead className="w-16 text-xs uppercase tracking-wide text-muted-foreground/70 font-semibold text-right">kcal</TableHead>
+                <TableHead className="w-16 text-xs uppercase tracking-wide text-muted-foreground/70 font-semibold text-right hidden sm:table-cell">Carbs</TableHead>
+                <TableHead className="w-16 text-xs uppercase tracking-wide text-muted-foreground/70 font-semibold text-right hidden sm:table-cell">Protein</TableHead>
+                <TableHead className="w-16 text-xs uppercase tracking-wide text-muted-foreground/70 font-semibold text-right hidden sm:table-cell">Fats</TableHead>
                 {canEdit && <TableHead className="w-8" />}
               </TableRow>
             </TableHeader>
             <TableBody>
               {localRows.length === 0 ? (
-                <TableRow>
-                  <td
-                    colSpan={canEdit ? 7 : 6}
-                    className="py-6 text-center text-sm text-muted-foreground"
-                  >
-                    {canEdit
-                      ? "No items yet. Click + to add products or recipes."
-                      : "No items in this section."}
+                <TableRow className="hover:bg-transparent">
+                  <td colSpan={canEdit ? 7 : 6} className="py-8 text-center text-sm text-muted-foreground">
+                    {canEdit ? (
+                      <button
+                        onClick={() => setShowPicker(true)}
+                        className="inline-flex items-center gap-1.5 text-primary hover:underline font-medium"
+                      >
+                        <Plus className="size-3.5" /> Add your first item
+                      </button>
+                    ) : "No items in this section."}
                   </td>
                 </TableRow>
               ) : (
@@ -272,10 +269,10 @@ export function DietSection({
 
           {/* Section totals */}
           {localRows.length > 0 && (
-            <div className="px-4 py-2 bg-muted/20">
+            <div className="px-3 py-2.5 border-t bg-muted/20">
               <NutritionSummaryBar
                 {...sectionNutrition}
-                label={`${sectionName} total:`}
+                label={`${sectionName}:`}
                 variant="section"
               />
             </div>

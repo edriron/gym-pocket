@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Share2, ChevronDown } from 'lucide-react'
+import { Plus, Share2, ChevronDown, Utensils } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +18,17 @@ import { addDietSection, renameDietTable } from '@/app/(protected)/diet/actions'
 import { sumNutrition } from '@/lib/nutrition'
 import { MEAL_SECTION_PRESETS } from '@/lib/constants'
 import type { DietTableWithSections, Product, Recipe, TableShare } from '@/types'
+
+const PRESET_EMOJIS: Record<string, string> = {
+  'Breakfast':       '🌅',
+  'Morning Snack':   '🥗',
+  'Lunch':           '☀️',
+  'Afternoon Snack': '🍎',
+  'Dinner':          '🌙',
+  'Evening Snack':   '🫖',
+  'Pre-Workout':     '⚡',
+  'Post-Workout':    '💪',
+}
 
 interface DietTableEditorProps {
   table: DietTableWithSections
@@ -40,8 +51,6 @@ export function DietTableEditor({
   const [tableName, setTableName] = useState(table.name)
   const [editingName, setEditingName] = useState(false)
 
-  // Grand-total nutrition across all sections.
-  // Recipe nutrition is stored per 100g (pre-computed in page server component).
   const allRows = table.diet_sections.flatMap((s) => s.diet_rows)
   const grandTotal = sumNutrition(
     allRows.map((row) => {
@@ -60,20 +69,13 @@ export function DietTableEditor({
   )
 
   async function handleAddSection(name: string) {
-    const result = await addDietSection(
-      table.id,
-      { name },
-      table.diet_sections.length
-    )
+    const result = await addDietSection(table.id, { name }, table.diet_sections.length)
     if (result?.error) toast.error(result.error)
-    else toast.success(`Section "${name}" added`)
+    else toast.success(`${PRESET_EMOJIS[name] ?? ''} ${name} added`.trim())
   }
 
   async function handleRenameTable() {
-    if (tableName === table.name) {
-      setEditingName(false)
-      return
-    }
+    if (tableName === table.name) { setEditingName(false); return }
     const result = await renameDietTable(table.id, tableName)
     if (result?.error) toast.error(result.error)
     setEditingName(false)
@@ -81,36 +83,41 @@ export function DietTableEditor({
 
   return (
     <div className="space-y-5">
-      {/* Table header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex-1 min-w-0">
-          {editingName && canEdit ? (
-            <Input
-              value={tableName}
-              onChange={(e) => setTableName(e.target.value)}
-              onBlur={handleRenameTable}
-              onKeyDown={(e) => e.key === 'Enter' && handleRenameTable()}
-              autoFocus
-              className="text-2xl font-bold h-10 max-w-xs"
-            />
-          ) : (
-            <h1
-              className={`text-2xl font-bold truncate ${canEdit ? 'cursor-pointer hover:underline' : ''}`}
-              onClick={() => canEdit && setEditingName(true)}
-              title={canEdit ? 'Click to rename' : undefined}
-            >
-              {tableName}
-            </h1>
-          )}
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/40 shrink-0">
+            <Utensils className="size-5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div className="min-w-0">
+            {editingName && canEdit ? (
+              <Input
+                value={tableName}
+                onChange={(e) => setTableName(e.target.value)}
+                onBlur={handleRenameTable}
+                onKeyDown={(e) => e.key === 'Enter' && handleRenameTable()}
+                autoFocus
+                className="text-xl font-bold h-9 max-w-xs"
+              />
+            ) : (
+              <h1
+                className={`text-xl font-bold truncate leading-tight ${canEdit ? 'cursor-pointer hover:underline decoration-muted-foreground' : ''}`}
+                onClick={() => canEdit && setEditingName(true)}
+                title={canEdit ? 'Click to rename' : undefined}
+              >
+                {tableName}
+              </h1>
+            )}
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {table.diet_sections.length} {table.diet_sections.length === 1 ? 'section' : 'sections'} · {allRows.length} {allRows.length === 1 ? 'item' : 'items'}
+            </p>
+          </div>
         </div>
+
         <div className="flex items-center gap-2 shrink-0">
           {isOwner && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => setShareOpen(true)}
-            >
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setShareOpen(true)}>
               <Share2 className="size-4" /> Share
             </Button>
           )}
@@ -128,7 +135,9 @@ export function DietTableEditor({
                   <DropdownMenuItem
                     key={preset}
                     onClick={() => handleAddSection(preset)}
+                    className="gap-2.5"
                   >
+                    <span className="text-base leading-none">{PRESET_EMOJIS[preset]}</span>
                     {preset}
                   </DropdownMenuItem>
                 ))}
@@ -140,12 +149,18 @@ export function DietTableEditor({
 
       {/* Sections */}
       {table.diet_sections.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            {canEdit
-              ? 'Add a section to start planning your meals (e.g. Breakfast, Lunch).'
-              : 'No sections added yet.'}
-          </p>
+        <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed bg-muted/20 p-12 text-center">
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-900/40">
+            <Utensils className="size-8 text-emerald-500 dark:text-emerald-400" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">No sections yet</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {canEdit
+                ? 'Use "Add Section" to start planning your meals.'
+                : 'No sections have been added yet.'}
+            </p>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -170,7 +185,7 @@ export function DietTableEditor({
           {...grandTotal}
           label="Daily Total:"
           variant="total"
-          className="mt-4"
+          className="mt-2"
         />
       )}
 

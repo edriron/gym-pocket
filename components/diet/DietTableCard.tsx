@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
-import { MoreHorizontal, Pencil, Trash2, Share2, ExternalLink } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, Share2, ExternalLink, Users } from 'lucide-react'
 import { toast } from 'sonner'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,25 +45,36 @@ export function DietTableCard({
 
   return (
     <>
-      <Card className="group relative hover:shadow-md transition-shadow">
-        <CardHeader className="pb-2">
+      <Card className="group relative overflow-hidden hover:shadow-lg transition-all duration-200 border hover:border-emerald-200 dark:hover:border-emerald-800/60">
+        {/* Emerald top accent bar */}
+        <div className="h-1 w-full bg-linear-to-r from-emerald-500 to-teal-400" />
+
+        {/* Ambient glow */}
+        <div className="pointer-events-none absolute top-0 right-0 size-28 rounded-full bg-emerald-400/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+
+        <CardContent className="relative pt-4 pb-4">
           <div className="flex items-start justify-between gap-2">
             <Link href={`/diet/${table.id}`} className="flex-1 min-w-0">
-              <h3 className="font-semibold text-base truncate hover:underline">{table.name}</h3>
+              <h3 className="font-semibold text-base truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
+                {table.name}
+              </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {format(parseISO(table.created_at), 'MMM d, yyyy')}
               </p>
             </Link>
             <div className="flex items-center gap-1 shrink-0">
               {!isOwner && accessMode && (
-                <Badge variant={accessMode === 'edit' ? 'default' : 'secondary'} className="text-xs">
+                <Badge
+                  variant={accessMode === 'edit' ? 'default' : 'secondary'}
+                  className="text-xs"
+                >
                   {accessMode === 'edit' ? 'Edit' : 'View'}
                 </Badge>
               )}
               {isOwner && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm">
+                    <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
                       <MoreHorizontal className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -87,15 +98,13 @@ export function DietTableCard({
               )}
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="pb-3">
-          <Link href={`/diet/${table.id}`} className="block">
-            {shareCount > 0 && (
-              <p className="text-xs text-muted-foreground">
-                Shared with {shareCount} {shareCount === 1 ? 'person' : 'people'}
-              </p>
-            )}
-          </Link>
+
+          {shareCount > 0 && (
+            <div className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground">
+              <Users className="size-3.5" />
+              <span>Shared with {shareCount} {shareCount === 1 ? 'person' : 'people'}</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 

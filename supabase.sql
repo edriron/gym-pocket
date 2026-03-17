@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   protein_g      numeric(6,2) NOT NULL DEFAULT 0 CHECK (protein_g >= 0),
   fats_g         numeric(6,2) NOT NULL DEFAULT 0 CHECK (fats_g >= 0),
   serving_size_g numeric(7,2) CHECK (serving_size_g > 0),
+  image_url      text,
   created_at     timestamptz NOT NULL DEFAULT now(),
   updated_at     timestamptz NOT NULL DEFAULT now()
 );
@@ -602,6 +603,62 @@ LANGUAGE sql STABLE SECURITY DEFINER AS $$
   FROM public.workout_tables wt
   WHERE wt.id = p_table_id;
 $$;
+
+-- ==============================================================
+-- STORAGE — product-images bucket
+-- ==============================================================
+
+-- Create the public bucket (run once)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'product-images',
+  'product-images',
+  true,
+  5242880,  -- 5 MB
+  ARRAY['image/jpeg','image/png','image/webp','image/gif']
+)
+ON CONFLICT (id) DO NOTHING;
+
+DO $$ BEGIN
+  -- Anyone (including anonymous) can read images
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'product-images: public read'
+  ) THEN
+    CREATE POLICY "product-images: public read"
+      ON storage.objects FOR SELECT
+      USING (bucket_id = 'product-images');
+  END IF;
+
+  -- Authenticated users can upload / replace images
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'product-images: auth upload'
+  ) THEN
+    CREATE POLICY "product-images: auth upload"
+      ON storage.objects FOR INSERT TO authenticated
+      WITH CHECK (bucket_id = 'product-images');
+  END IF;
+
+  -- Authenticated users can update (upsert)
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'product-images: auth update'
+  ) THEN
+    CREATE POLICY "product-images: auth update"
+      ON storage.objects FOR UPDATE TO authenticated
+      USING (bucket_id = 'product-images');
+  END IF;
+
+  -- Authenticated users can delete images
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'product-images: auth delete'
+  ) THEN
+    CREATE POLICY "product-images: auth delete"
+      ON storage.objects FOR DELETE TO authenticated
+      USING (bucket_id = 'product-images');
+  END IF;
+END $$;
+
+-- Alter existing products table to add image_url (if running against an existing DB)
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS image_url text;
 
 -- ==============================================================
 -- DONE

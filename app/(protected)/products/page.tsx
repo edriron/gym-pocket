@@ -26,6 +26,8 @@ export default async function ProductsPage() {
       <PageHeader
         title="Products"
         description="Global product library with nutritional information per 100g."
+        icon={ShoppingBasket}
+        iconColor="amber"
         action={
           <div className="flex gap-2">
             <ImportProductsButton />
@@ -37,6 +39,7 @@ export default async function ProductsPage() {
       {list.length === 0 ? (
         <EmptyState
           icon={ShoppingBasket}
+          iconColor="amber"
           title="No products yet"
           description="Be the first to add a product with nutritional info."
           action={<AddProductButton />}

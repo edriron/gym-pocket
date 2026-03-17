@@ -72,6 +72,7 @@ export type Database = {
           protein_g: number
           fats_g: number
           serving_size_g: number | null
+          image_url: string | null
           created_at: string
           updated_at: string
         }
@@ -85,6 +86,7 @@ export type Database = {
           protein_g?: number
           fats_g?: number
           serving_size_g?: number | null
+          image_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -98,6 +100,7 @@ export type Database = {
           protein_g?: number
           fats_g?: number
           serving_size_g?: number | null
+          image_url?: string | null
           created_at?: string
           updated_at?: string
         }

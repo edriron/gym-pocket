@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { MoreHorizontal, Pencil, Trash2, Search } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { MoreHorizontal, Pencil, Trash2, Search, LayoutList, LayoutGrid, ShoppingBasket, Flame } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Table,
@@ -26,15 +26,147 @@ import { updateProduct, deleteProduct } from '@/app/(protected)/products/actions
 import type { Product } from '@/types'
 import type { ProductFormValues } from '@/lib/validations'
 
+const VIEW_KEY = 'gym-pocket-products-view'
+
 interface ProductsTableProps {
   products: Product[]
   currentUserId: string
+}
+
+function ProductImageArea({ imageUrl }: { imageUrl: string | null }) {
+  const [loaded, setLoaded] = useState(false)
+  const [errored, setErrored] = useState(false)
+
+  // Reset state when imageUrl changes
+  useEffect(() => { setLoaded(false); setErrored(false) }, [imageUrl])
+
+  const showImage = imageUrl && !errored
+
+  return (
+    <div className="aspect-square border-b overflow-hidden relative">
+      {/* Neutral placeholder shown while loading or when no image */}
+      <div
+        className={`absolute inset-0 bg-muted/40 flex items-center justify-center transition-opacity duration-300 ${
+          showImage && loaded ? 'opacity-0' : 'opacity-100'
+        }`}
+      >
+        <ShoppingBasket className="size-8 text-muted-foreground/30" />
+      </div>
+      {showImage && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt="Product"
+          onLoad={() => setLoaded(true)}
+          onError={() => setErrored(true)}
+          className={`size-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        />
+      )}
+    </div>
+  )
+}
+
+function ProductCard({
+  product,
+  isOwner,
+  onEdit,
+  onDelete,
+}: {
+  product: Product
+  isOwner: boolean
+  onEdit: (p: Product) => void
+  onDelete: (id: string) => void
+}) {
+  const serving = product.serving_size_g ?? 100
+  const factor = serving / 100
+  const cals = Math.round(product.calories * factor * 10) / 10
+  const carbs = Math.round(product.carbs_g * factor * 10) / 10
+  const prot = Math.round(product.protein_g * factor * 10) / 10
+  const fats = Math.round(product.fats_g * factor * 10) / 10
+
+  return (
+    <div className="group relative bg-card border rounded-xl overflow-hidden hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-200">
+      {/* Image area */}
+      <ProductImageArea imageUrl={product.image_url ?? null} />
+
+      {/* Content */}
+      <div className="p-3 space-y-2.5">
+        <div className="min-h-10">
+          <p className="font-semibold text-sm leading-tight line-clamp-2">{product.name}</p>
+          {product.description && (
+            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{product.description}</p>
+          )}
+        </div>
+
+        {/* Calories */}
+        <div className="flex items-center gap-1.5">
+          <Flame className="size-3.5 text-red-500 shrink-0" />
+          <span className="text-sm font-bold text-red-600 dark:text-red-400 tabular-nums">{cals}</span>
+          <span className="text-xs text-muted-foreground">kcal</span>
+          <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border-0">
+            {serving}g
+          </Badge>
+        </div>
+
+        {/* Macros */}
+        <div className="grid grid-cols-3 gap-1 text-center">
+          <div className="bg-muted/50 rounded-lg py-1.5 px-1">
+            <p className="text-xs font-semibold tabular-nums text-amber-700 dark:text-amber-400">{carbs}g</p>
+            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">carbs</p>
+          </div>
+          <div className="bg-muted/50 rounded-lg py-1.5 px-1">
+            <p className="text-xs font-semibold tabular-nums text-blue-700 dark:text-blue-400">{prot}g</p>
+            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">protein</p>
+          </div>
+          <div className="bg-muted/50 rounded-lg py-1.5 px-1">
+            <p className="text-xs font-semibold tabular-nums text-orange-700 dark:text-orange-400">{fats}g</p>
+            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">fats</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Owner actions */}
+      {isOwner && (
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" size="icon-sm" className="size-7 shadow-sm">
+                <MoreHorizontal className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem className="gap-2" onClick={() => onEdit(product)}>
+                <Pencil className="size-4" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-2 text-destructive focus:text-destructive"
+                onClick={() => onDelete(product.id)}
+              >
+                <Trash2 className="size-4" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
   const [editProduct, setEditProduct] = useState<Product | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [view, setView] = useState<'list' | 'grid'>('list')
+
+  useEffect(() => {
+    const saved = localStorage.getItem(VIEW_KEY)
+    if (saved === 'grid' || saved === 'list') setView(saved)
+  }, [])
+
+  function toggleView(v: 'list' | 'grid') {
+    setView(v)
+    localStorage.setItem(VIEW_KEY, v)
+  }
 
   const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
@@ -56,91 +188,155 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
 
   return (
     <>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search products..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      {/* Toolbar */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search products..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex items-center rounded-lg border bg-muted/40 p-1 gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className={view === 'list' ? 'bg-background shadow-sm text-amber-600 dark:text-amber-400' : 'text-muted-foreground hover:text-foreground'}
+            onClick={() => toggleView('list')}
+            title="List view"
+          >
+            <LayoutList className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className={view === 'grid' ? 'bg-background shadow-sm text-amber-600 dark:text-amber-400' : 'text-muted-foreground hover:text-foreground'}
+            onClick={() => toggleView('grid')}
+            title="Card view"
+          >
+            <LayoutGrid className="size-4" />
+          </Button>
+        </div>
       </div>
 
-      <div className="rounded-lg border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead className="text-right">kcal</TableHead>
-              <TableHead className="text-right">Carbs</TableHead>
-              <TableHead className="text-right">Protein</TableHead>
-              <TableHead className="text-right">Fats</TableHead>
-              <TableHead className="text-right hidden sm:table-cell">Serving</TableHead>
-              <TableHead className="w-12" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                  {search ? 'No products match your search.' : 'No products yet.'}
-                </TableCell>
+      {/* Results count */}
+      {search && (
+        <p className="text-sm text-muted-foreground">
+          {filtered.length} result{filtered.length !== 1 ? 's' : ''} for &ldquo;{search}&rdquo;
+        </p>
+      )}
+
+      {/* Grid view */}
+      {view === 'grid' ? (
+        filtered.length === 0 ? (
+          <div className="py-16 text-center text-muted-foreground text-sm">
+            {search ? 'No products match your search.' : 'No products yet.'}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            {filtered.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                isOwner={product.created_by === currentUserId}
+                onEdit={setEditProduct}
+                onDelete={setDeleteId}
+              />
+            ))}
+          </div>
+        )
+      ) : (
+        /* List view */
+        <div className="rounded-xl border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">Name</TableHead>
+                <TableHead className="text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">kcal</TableHead>
+                <TableHead className="text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">Carbs</TableHead>
+                <TableHead className="text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">Protein</TableHead>
+                <TableHead className="text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">Fats</TableHead>
+                <TableHead className="text-right hidden sm:table-cell font-semibold text-xs uppercase tracking-wide text-muted-foreground">Serving</TableHead>
+                <TableHead className="w-12" />
               </TableRow>
-            ) : (
-              filtered.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <div>
-                      <span className="font-medium">{product.name}</span>
-                      {product.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-1">
-                          {product.description}
-                        </p>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{product.calories}</TableCell>
-                  <TableCell className="text-right tabular-nums">{product.carbs_g}g</TableCell>
-                  <TableCell className="text-right tabular-nums">{product.protein_g}g</TableCell>
-                  <TableCell className="text-right tabular-nums">{product.fats_g}g</TableCell>
-                  <TableCell className="text-right hidden sm:table-cell">
-                    {product.serving_size_g ? (
-                      <Badge variant="secondary">{product.serving_size_g}g</Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {product.created_by === currentUserId && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm">
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            className="gap-2"
-                            onClick={() => setEditProduct(product)}
-                          >
-                            <Pencil className="size-4" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="gap-2 text-destructive focus:text-destructive"
-                            onClick={() => setDeleteId(product.id)}
-                          >
-                            <Trash2 className="size-4" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                    {search ? 'No products match your search.' : 'No products yet.'}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                filtered.map((product) => (
+                  <TableRow key={product.id} className="hover:bg-amber-50/50 dark:hover:bg-amber-950/10">
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        <div className="size-8 rounded-lg overflow-hidden bg-muted/40 flex items-center justify-center shrink-0 border">
+                          {product.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={product.image_url} alt="" className="size-full object-cover" />
+                          ) : (
+                            <ShoppingBasket className="size-4 text-amber-600 dark:text-amber-400" />
+                          )}
+                        </div>
+                        <div>
+                          <span className="font-medium">{product.name}</span>
+                          {product.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-1">
+                              {product.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums font-medium text-red-600 dark:text-red-400">{product.calories}</TableCell>
+                    <TableCell className="text-right tabular-nums text-amber-700 dark:text-amber-400">{product.carbs_g}g</TableCell>
+                    <TableCell className="text-right tabular-nums text-blue-700 dark:text-blue-400">{product.protein_g}g</TableCell>
+                    <TableCell className="text-right tabular-nums text-orange-700 dark:text-orange-400">{product.fats_g}g</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell">
+                      {product.serving_size_g ? (
+                        <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border-0">
+                          {product.serving_size_g}g
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">per 100g</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {product.created_by === currentUserId && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon-sm">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              className="gap-2"
+                              onClick={() => setEditProduct(product)}
+                            >
+                              <Pencil className="size-4" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-2 text-destructive focus:text-destructive"
+                              onClick={() => setDeleteId(product.id)}
+                            >
+                              <Trash2 className="size-4" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       <ProductDialog
         open={!!editProduct}

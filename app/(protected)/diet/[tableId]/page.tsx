@@ -62,7 +62,7 @@ export default async function DietTablePage({ params }: PageProps) {
       recipeIds.map((id) => supabase.rpc('get_recipe_nutrition', { p_recipe_id: id }).single())
     )
     recipeIds.forEach((id, i) => {
-      const n = results[i].data
+      const n = results[i].data as { calories: number; carbs_g: number; protein_g: number; fats_g: number; total_weight_g: number } | null
       if (n && Number(n.total_weight_g) > 0) {
         // Store as per-100g so DietRowItem can scale identically to products
         const factor = 100 / Number(n.total_weight_g)

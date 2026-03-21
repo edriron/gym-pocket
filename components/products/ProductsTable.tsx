@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MoreHorizontal, Pencil, Trash2, Search, LayoutList, LayoutGrid, ShoppingBasket, Flame, X } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, Search, LayoutList, LayoutGrid, ShoppingBasket, Flame, X, Dumbbell, Wheat, Droplets, Apple, Leaf, Milk, Beef, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
@@ -28,6 +28,19 @@ import type { Product } from '@/types'
 import type { ProductFormValues } from '@/lib/validations'
 
 const VIEW_KEY = 'gym-pocket-products-view'
+
+const MACRO_TAGS: { tag: string; icon: LucideIcon; iconColor: string; activeClasses: string }[] = [
+  { tag: 'protein',  icon: Dumbbell, iconColor: 'text-blue-500 dark:text-blue-400',   activeClasses: 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300' },
+  { tag: 'carb',     icon: Wheat,    iconColor: 'text-amber-500 dark:text-amber-400', activeClasses: 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300' },
+  { tag: 'fat',      icon: Droplets, iconColor: 'text-orange-500 dark:text-orange-400', activeClasses: 'bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300' },
+]
+
+const TYPE_TAGS: { tag: string; icon: LucideIcon; iconColor: string; activeClasses: string }[] = [
+  { tag: 'fruit',     icon: Apple, iconColor: 'text-rose-500 dark:text-rose-400',    activeClasses: 'bg-rose-100 dark:bg-rose-900/40 border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300' },
+  { tag: 'vegetable', icon: Leaf,  iconColor: 'text-green-600 dark:text-green-400',  activeClasses: 'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300' },
+  { tag: 'dairy',     icon: Milk,  iconColor: 'text-sky-400 dark:text-sky-300',      activeClasses: 'bg-sky-100 dark:bg-sky-900/40 border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300' },
+  { tag: 'meat',      icon: Beef,  iconColor: 'text-red-700 dark:text-red-500',      activeClasses: 'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-800 dark:text-red-300' },
+]
 
 interface ProductsTableProps {
   products: Product[]
@@ -242,7 +255,7 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
 
       {/* Tag filters */}
       <div className="flex flex-wrap gap-2 items-center">
-        {(['protein', 'carb', 'fat'] as const).map((tag) => {
+        {MACRO_TAGS.map(({ tag, icon: Icon, iconColor, activeClasses }) => {
           const active = macroFilter.includes(tag)
           return (
             <button
@@ -250,19 +263,17 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
               type="button"
               onClick={() => setMacroFilter(prev => active ? prev.filter(t => t !== tag) : [...prev, tag])}
               className={cn(
-                'rounded-full px-3 py-1 text-xs font-medium border transition-all capitalize',
-                tag === 'protein' && active ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300' :
-                tag === 'carb' && active ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300' :
-                tag === 'fat' && active ? 'bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300' :
-                'border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40'
+                'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition-all capitalize',
+                active ? activeClasses : 'border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40'
               )}
             >
+              <Icon className={cn('size-3', active ? iconColor : 'text-muted-foreground/60')} />
               {tag}
             </button>
           )
         })}
         <div className="w-px h-4 bg-border mx-1" />
-        {(['fruit', 'vegetable', 'dairy', 'meat'] as const).map((tag) => {
+        {TYPE_TAGS.map(({ tag, icon: Icon, iconColor, activeClasses }) => {
           const active = typeFilter === tag
           return (
             <button
@@ -270,12 +281,11 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
               type="button"
               onClick={() => setTypeFilter(active ? null : tag)}
               className={cn(
-                'rounded-full px-3 py-1 text-xs font-medium border transition-all capitalize',
-                active
-                  ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300'
-                  : 'border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40'
+                'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition-all capitalize',
+                active ? activeClasses : 'border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40'
               )}
             >
+              <Icon className={cn('size-3', active ? iconColor : 'text-muted-foreground/60')} />
               {tag}
             </button>
           )

@@ -20,6 +20,8 @@ export const productSchema = z.object({
   protein_g: z.number().min(0).max(9999),
   fats_g: z.number().min(0).max(9999),
   serving_size_g: z.number().positive().max(99999).optional().nullable(),
+  macro_tags: z.array(z.enum(['protein', 'carb', 'fat'])).default([]),
+  type_tag: z.enum(['fruit', 'vegetable', 'dairy', 'meat']).nullable().optional(),
 })
 export type ProductFormValues = z.infer<typeof productSchema>
 
@@ -64,3 +66,11 @@ export const shareSchema = z.object({
   access_mode: z.enum(['view', 'edit']),
 })
 export type ShareFormValues = z.infer<typeof shareSchema>
+
+export const bodyStatsSchema = z.object({
+  age: z.number().int().min(1).max(149),
+  height_cm: z.number().positive().max(300),
+  gender: z.enum(['male', 'female']),
+  activity_level: z.enum(['sedentary', 'light', 'moderate', 'active', 'very_active']),
+})
+export type BodyStatsFormValues = z.infer<typeof bodyStatsSchema>

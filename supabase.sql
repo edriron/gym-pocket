@@ -665,3 +665,27 @@ ALTER TABLE public.products ADD COLUMN IF NOT EXISTS image_url text;
 -- Run this in Supabase SQL Editor: https://app.supabase.com
 -- Then configure Google OAuth in Authentication > Providers
 -- ==============================================================
+
+-- ── TAGS FOR PRODUCTS AND RECIPES ─────────────────────────────
+
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS macro_tags text[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS type_tag text;
+ALTER TABLE public.recipes ADD COLUMN IF NOT EXISTS macro_tags text[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.recipes ADD COLUMN IF NOT EXISTS type_tag text;
+
+-- ── USER BODY STATS (for BMR / TDEE profile) ──────────────────
+
+CREATE TABLE IF NOT EXISTS public.user_body_stats (
+  user_id        uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  age            integer CHECK (age > 0 AND age < 150),
+  height_cm      numeric(5,1) CHECK (height_cm > 0),
+  gender         text CHECK (gender IN ('male', 'female')),
+  activity_level text CHECK (activity_level IN ('sedentary', 'light', 'moderate', 'active', 'very_active')),
+  created_at     timestamptz NOT NULL DEFAULT now(),
+  updated_at     timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.user_body_stats ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "body_stats: owner all" ON public.user_body_stats
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);

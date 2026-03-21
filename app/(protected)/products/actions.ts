@@ -52,6 +52,8 @@ export async function addProduct(values: ProductFormValues) {
     protein_g: values.protein_g,
     fats_g: values.fats_g,
     serving_size_g: values.serving_size_g ?? null,
+    macro_tags: values.macro_tags ?? [],
+    type_tag: values.type_tag ?? null,
   });
 
   if (error) return { error: error.message };
@@ -75,6 +77,8 @@ export async function updateProduct(id: string, values: ProductFormValues) {
       protein_g: values.protein_g,
       fats_g: values.fats_g,
       serving_size_g: values.serving_size_g ?? null,
+      macro_tags: values.macro_tags ?? [],
+      type_tag: values.type_tag ?? null,
     })
     .eq("id", id)
     .eq("created_by", user.id);

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MoreHorizontal, Pencil, Trash2, Search, LayoutList, LayoutGrid, ShoppingBasket, Flame } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, Search, LayoutList, LayoutGrid, ShoppingBasket, Flame, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
   Table,
@@ -159,6 +160,8 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [view, setView] = useState<'list' | 'grid'>('list')
+  const [macroFilter, setMacroFilter] = useState<string[]>([])
+  const [typeFilter, setTypeFilter] = useState<string | null>(null)
   // Local image overrides so card/list updates immediately after upload without a page refresh
   const [imageOverrides, setImageOverrides] = useState<Record<string, string | null>>({})
 
@@ -172,9 +175,12 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
     localStorage.setItem(VIEW_KEY, v)
   }
 
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = products.filter((p) => {
+    if (!p.name.toLowerCase().includes(search.toLowerCase())) return false
+    if (macroFilter.length > 0 && !macroFilter.every(t => (p.macro_tags ?? []).includes(t))) return false
+    if (typeFilter && p.type_tag !== typeFilter) return false
+    return true
+  })
 
   async function handleUpdate(values: ProductFormValues) {
     if (!editProduct) return
@@ -200,8 +206,17 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
             placeholder="Search products..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className={cn('pl-9', search && 'pr-9')}
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          )}
         </div>
         <div className="flex items-center rounded-lg border bg-muted/40 p-1 gap-0.5">
           <Button
@@ -223,6 +238,57 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
             <LayoutGrid className="size-4" />
           </Button>
         </div>
+      </div>
+
+      {/* Tag filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        {(['protein', 'carb', 'fat'] as const).map((tag) => {
+          const active = macroFilter.includes(tag)
+          return (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => setMacroFilter(prev => active ? prev.filter(t => t !== tag) : [...prev, tag])}
+              className={cn(
+                'rounded-full px-3 py-1 text-xs font-medium border transition-all capitalize',
+                tag === 'protein' && active ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300' :
+                tag === 'carb' && active ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300' :
+                tag === 'fat' && active ? 'bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300' :
+                'border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40'
+              )}
+            >
+              {tag}
+            </button>
+          )
+        })}
+        <div className="w-px h-4 bg-border mx-1" />
+        {(['fruit', 'vegetable', 'dairy', 'meat'] as const).map((tag) => {
+          const active = typeFilter === tag
+          return (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => setTypeFilter(active ? null : tag)}
+              className={cn(
+                'rounded-full px-3 py-1 text-xs font-medium border transition-all capitalize',
+                active
+                  ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300'
+                  : 'border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40'
+              )}
+            >
+              {tag}
+            </button>
+          )
+        })}
+        {(macroFilter.length > 0 || typeFilter) && (
+          <button
+            type="button"
+            onClick={() => { setMacroFilter([]); setTypeFilter(null) }}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+          >
+            Clear filters
+          </button>
+        )}
       </div>
 
       {/* Results count */}

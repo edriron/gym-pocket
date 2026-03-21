@@ -59,6 +59,13 @@ const NAV_ACCENT: Record<
     bgActive: "bg-pink-50 dark:bg-pink-950/40",
     textActive: "text-pink-700 dark:text-pink-300",
   },
+  "/profile": {
+    iconIdle: "text-indigo-500 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/40",
+    iconActive: "text-white bg-indigo-600 dark:bg-indigo-500",
+    bgIdle: "hover:bg-indigo-50 dark:hover:bg-indigo-950/30",
+    bgActive: "bg-indigo-50 dark:bg-indigo-950/40",
+    textActive: "text-indigo-700 dark:text-indigo-300",
+  },
 };
 
 export function Sidebar() {

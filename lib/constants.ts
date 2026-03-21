@@ -5,6 +5,7 @@ import {
   ChefHat,
   Utensils,
   Dumbbell,
+  User,
 } from 'lucide-react'
 
 export const NAV_ITEMS = [
@@ -37,6 +38,11 @@ export const NAV_ITEMS = [
     label: 'Recipes',
     href: '/recipes',
     icon: ChefHat,
+  },
+  {
+    label: 'Profile',
+    href: '/profile',
+    icon: User,
   },
 ] as const
 

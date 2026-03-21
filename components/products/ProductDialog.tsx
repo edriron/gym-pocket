@@ -35,6 +35,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { productSchema, type ProductFormValues } from '@/lib/validations'
+import { cn } from '@/lib/utils'
 import {
   fetchAndUploadProductImage,
   saveProductImageUrl,
@@ -59,6 +60,8 @@ const DEFAULT_VALUES: ProductFormValues = {
   protein_g: 0,
   fats_g: 0,
   serving_size_g: null,
+  macro_tags: [],
+  type_tag: null,
 }
 
 // ── Food image search (proxied through our API to avoid CORS) ──
@@ -380,8 +383,9 @@ export function ProductDialog({ open, onOpenChange, product, onSubmit, onImageUp
   }
   const isEdit = !!product
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
+    resolver: zodResolver(productSchema) as any,
     defaultValues: DEFAULT_VALUES,
   })
 
@@ -397,6 +401,8 @@ export function ProductDialog({ open, onOpenChange, product, onSubmit, onImageUp
               protein_g: product.protein_g,
               fats_g: product.fats_g,
               serving_size_g: product.serving_size_g,
+              macro_tags: (product.macro_tags as ('protein' | 'carb' | 'fat')[]) ?? [],
+              type_tag: (product.type_tag as 'fruit' | 'vegetable' | 'dairy' | 'meat' | null) ?? null,
             }
           : DEFAULT_VALUES
       )
@@ -554,6 +560,75 @@ export function ProductDialog({ open, onOpenChange, product, onSubmit, onImageUp
                     Optional: define a common serving size in grams
                   </FormDescription>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Macro tags */}
+            <FormField
+              control={form.control}
+              name="macro_tags"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Macro Tags</FormLabel>
+                  <div className="flex gap-2">
+                    {(['protein', 'carb', 'fat'] as const).map((tag) => {
+                      const selected = field.value?.includes(tag)
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            if (selected) {
+                              field.onChange(field.value.filter((t: string) => t !== tag))
+                            } else {
+                              field.onChange([...(field.value ?? []), tag])
+                            }
+                          }}
+                          className={cn(
+                            'rounded-full px-3 py-1 text-xs font-medium border transition-all capitalize',
+                            tag === 'protein' && selected ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300' :
+                            tag === 'carb' && selected ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300' :
+                            tag === 'fat' && selected ? 'bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300' :
+                            'border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40'
+                          )}
+                        >
+                          {tag}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            {/* Type tag */}
+            <FormField
+              control={form.control}
+              name="type_tag"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Type</FormLabel>
+                  <div className="flex flex-wrap gap-2">
+                    {(['fruit', 'vegetable', 'dairy', 'meat'] as const).map((tag) => {
+                      const selected = field.value === tag
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => field.onChange(selected ? null : tag)}
+                          className={cn(
+                            'rounded-full px-3 py-1 text-xs font-medium border transition-all capitalize',
+                            selected
+                              ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300'
+                              : 'border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40'
+                          )}
+                        >
+                          {tag}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </FormItem>
               )}
             />

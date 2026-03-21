@@ -42,7 +42,7 @@ export default async function DietTablePage({ params }: PageProps) {
           .eq('table_type', 'diet')
       : Promise.resolve({ data: [] }),
     supabase.from('products').select('*').order('name'),
-    supabase.from('recipes').select('id, name, created_by, description, created_at, updated_at').order('name'),
+    supabase.from('recipes').select('id, name, created_by, description, macro_tags, type_tag, created_at, updated_at').order('name'),
   ])
 
   // Collect unique recipe IDs used in this table's rows

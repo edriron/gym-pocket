@@ -73,6 +73,8 @@ export type Database = {
           fats_g: number
           serving_size_g: number | null
           image_url: string | null
+          macro_tags: string[]
+          type_tag: string | null
           created_at: string
           updated_at: string
         }
@@ -87,6 +89,8 @@ export type Database = {
           fats_g?: number
           serving_size_g?: number | null
           image_url?: string | null
+          macro_tags?: string[]
+          type_tag?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -101,6 +105,8 @@ export type Database = {
           fats_g?: number
           serving_size_g?: number | null
           image_url?: string | null
+          macro_tags?: string[]
+          type_tag?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -111,6 +117,8 @@ export type Database = {
           created_by: string
           name: string
           description: string | null
+          macro_tags: string[]
+          type_tag: string | null
           created_at: string
           updated_at: string
         }
@@ -119,6 +127,8 @@ export type Database = {
           created_by: string
           name: string
           description?: string | null
+          macro_tags?: string[]
+          type_tag?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -127,6 +137,8 @@ export type Database = {
           created_by?: string
           name?: string
           description?: string | null
+          macro_tags?: string[]
+          type_tag?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -317,6 +329,35 @@ export type Database = {
           shared_with_id?: string
           access_mode?: 'view' | 'edit'
           created_at?: string
+        }
+      }
+      user_body_stats: {
+        Row: {
+          user_id: string
+          age: number | null
+          height_cm: number | null
+          gender: string | null
+          activity_level: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          age?: number | null
+          height_cm?: number | null
+          gender?: string | null
+          activity_level?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          age?: number | null
+          height_cm?: number | null
+          gender?: string | null
+          activity_level?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
     }

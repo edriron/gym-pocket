@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MoreHorizontal, Pencil, Trash2, Search, LayoutList, LayoutGrid, ShoppingBasket, Flame, X, Dumbbell, Wheat, Droplets, Apple, Leaf, Milk, Beef, type LucideIcon } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, Search, LayoutList, LayoutGrid, ShoppingBasket, Flame, X, Eye } from 'lucide-react'
+import { MACRO_TAG_CONFIG, TYPE_TAG_CONFIG } from '@/lib/product-tags'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
@@ -21,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ProductDialog } from './ProductDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { updateProduct, deleteProduct } from '@/app/(protected)/products/actions'
@@ -29,18 +31,8 @@ import type { ProductFormValues } from '@/lib/validations'
 
 const VIEW_KEY = 'gym-pocket-products-view'
 
-const MACRO_TAGS: { tag: string; icon: LucideIcon; iconColor: string; activeClasses: string }[] = [
-  { tag: 'protein',  icon: Dumbbell, iconColor: 'text-blue-500 dark:text-blue-400',   activeClasses: 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300' },
-  { tag: 'carb',     icon: Wheat,    iconColor: 'text-amber-500 dark:text-amber-400', activeClasses: 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300' },
-  { tag: 'fat',      icon: Droplets, iconColor: 'text-orange-500 dark:text-orange-400', activeClasses: 'bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300' },
-]
-
-const TYPE_TAGS: { tag: string; icon: LucideIcon; iconColor: string; activeClasses: string }[] = [
-  { tag: 'fruit',     icon: Apple, iconColor: 'text-rose-500 dark:text-rose-400',    activeClasses: 'bg-rose-100 dark:bg-rose-900/40 border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300' },
-  { tag: 'vegetable', icon: Leaf,  iconColor: 'text-green-600 dark:text-green-400',  activeClasses: 'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300' },
-  { tag: 'dairy',     icon: Milk,  iconColor: 'text-sky-400 dark:text-sky-300',      activeClasses: 'bg-sky-100 dark:bg-sky-900/40 border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300' },
-  { tag: 'meat',      icon: Beef,  iconColor: 'text-red-700 dark:text-red-500',      activeClasses: 'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-800 dark:text-red-300' },
-]
+const MACRO_TAGS = MACRO_TAG_CONFIG
+const TYPE_TAGS  = TYPE_TAG_CONFIG
 
 interface ProductsTableProps {
   products: Product[]
@@ -83,22 +75,23 @@ function ProductImageArea({ imageUrl }: { imageUrl: string | null }) {
 function ProductCard({
   product,
   imageUrl,
+  activeServingG,
   isOwner,
+  onView,
   onEdit,
   onDelete,
+  onToggleServing,
 }: {
   product: Product
   imageUrl: string | null
+  activeServingG: number | undefined
   isOwner: boolean
+  onView: (p: Product) => void
   onEdit: (p: Product) => void
   onDelete: (id: string) => void
+  onToggleServing: () => void
 }) {
-  const serving = product.serving_size_g ?? 100
-  const factor = serving / 100
-  const cals = Math.round(product.calories * factor * 10) / 10
-  const carbs = Math.round(product.carbs_g * factor * 10) / 10
-  const prot = Math.round(product.protein_g * factor * 10) / 10
-  const fats = Math.round(product.fats_g * factor * 10) / 10
+  const n = calcNutrition(product, activeServingG ?? 100)
 
   return (
     <div className="group relative bg-card border rounded-xl overflow-hidden hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-200">
@@ -117,33 +110,33 @@ function ProductCard({
         {/* Calories */}
         <div className="flex items-center gap-1.5">
           <Flame className="size-3.5 text-red-500 shrink-0" />
-          <span className="text-sm font-bold text-red-600 dark:text-red-400 tabular-nums">{cals}</span>
+          <span className="text-sm font-bold text-red-600 dark:text-red-400 tabular-nums">{n.calories}</span>
           <span className="text-xs text-muted-foreground">kcal</span>
-          <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border-0">
-            {serving}g
-          </Badge>
+          <span className="ml-auto">
+            <ServingBadge product={product} activeG={activeServingG} onToggle={onToggleServing} />
+          </span>
         </div>
 
         {/* Macros */}
         <div className="grid grid-cols-3 gap-1 text-center">
           <div className="bg-muted/50 rounded-lg py-1.5 px-1">
-            <p className="text-xs font-semibold tabular-nums text-amber-700 dark:text-amber-400">{carbs}g</p>
+            <p className="text-xs font-semibold tabular-nums text-amber-700 dark:text-amber-400">{n.carbs_g}g</p>
             <p className="text-[10px] text-muted-foreground leading-none mt-0.5">carbs</p>
           </div>
           <div className="bg-muted/50 rounded-lg py-1.5 px-1">
-            <p className="text-xs font-semibold tabular-nums text-blue-700 dark:text-blue-400">{prot}g</p>
+            <p className="text-xs font-semibold tabular-nums text-blue-700 dark:text-blue-400">{n.protein_g}g</p>
             <p className="text-[10px] text-muted-foreground leading-none mt-0.5">protein</p>
           </div>
           <div className="bg-muted/50 rounded-lg py-1.5 px-1">
-            <p className="text-xs font-semibold tabular-nums text-orange-700 dark:text-orange-400">{fats}g</p>
+            <p className="text-xs font-semibold tabular-nums text-orange-700 dark:text-orange-400">{n.fats_g}g</p>
             <p className="text-[10px] text-muted-foreground leading-none mt-0.5">fats</p>
           </div>
         </div>
       </div>
 
       {/* Owner actions */}
-      {isOwner && (
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        {isOwner ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon-sm" className="size-7 shadow-sm">
@@ -151,6 +144,9 @@ function ProductCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem className="gap-2" onClick={() => onView(product)}>
+                <Eye className="size-4" /> View
+              </DropdownMenuItem>
               <DropdownMenuItem className="gap-2" onClick={() => onEdit(product)}>
                 <Pencil className="size-4" /> Edit
               </DropdownMenuItem>
@@ -162,9 +158,59 @@ function ProductCard({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
-      )}
+        ) : (
+          <Button variant="secondary" size="icon-sm" className="size-7 shadow-sm" onClick={() => onView(product)} title="View product">
+            <Eye className="size-3.5" />
+          </Button>
+        )}
+      </div>
     </div>
+  )
+}
+
+// activeServing[productId] = weight_g currently selected (undefined = 100g default)
+type ServingState = Record<string, number | undefined>
+
+function calcNutrition(p: Product, weightG: number) {
+  const f = weightG / 100
+  return {
+    calories: Math.round(p.calories * f * 10) / 10,
+    carbs_g:  Math.round(p.carbs_g  * f * 10) / 10,
+    protein_g: Math.round(p.protein_g * f * 10) / 10,
+    fats_g:   Math.round(p.fats_g   * f * 10) / 10,
+  }
+}
+
+// Cycle through: 100g → option[0] → option[1] → … → 100g
+function cycleServing(p: Product, current: number | undefined): number | undefined {
+  const opts = p.serving_options ?? []
+  if (opts.length === 0) return undefined
+  if (current === undefined) return opts[0].weight_g
+  const idx = opts.findIndex(o => o.weight_g === current)
+  if (idx === -1 || idx === opts.length - 1) return undefined
+  return opts[idx + 1].weight_g
+}
+
+function ServingBadge({ product, activeG, onToggle }: { product: Product; activeG: number | undefined; onToggle: () => void }) {
+  const opts = product.serving_options ?? []
+  const hasOpts = opts.length > 0
+  const label = activeG !== undefined
+    ? (opts.find(o => o.weight_g === activeG)?.label ?? `${activeG}g`)
+    : '100g'
+
+  if (!hasOpts) {
+    return <span className="text-muted-foreground text-xs">100g</span>
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title="Click to toggle serving size"
+      className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border-0 px-2 py-0.5 text-xs font-medium hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors cursor-pointer"
+    >
+      {label}
+    </button>
   )
 }
 
@@ -175,6 +221,8 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
   const [view, setView] = useState<'list' | 'grid'>('list')
   const [macroFilter, setMacroFilter] = useState<string[]>([])
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
+  const [activeServings, setActiveServings] = useState<ServingState>({})
+  const [viewProduct, setViewProduct] = useState<Product | null>(null)
   // Local image overrides so card/list updates immediately after upload without a page refresh
   const [imageOverrides, setImageOverrides] = useState<Record<string, string | null>>({})
 
@@ -186,6 +234,13 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
   function toggleView(v: 'list' | 'grid') {
     setView(v)
     localStorage.setItem(VIEW_KEY, v)
+  }
+
+  function toggleServing(product: Product) {
+    setActiveServings(prev => ({
+      ...prev,
+      [product.id]: cycleServing(product, prev[product.id]),
+    }))
   }
 
   const filtered = products.filter((p) => {
@@ -320,10 +375,13 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
               <ProductCard
                 key={product.id}
                 product={product}
+                activeServingG={activeServings[product.id]}
                 imageUrl={imageOverrides[product.id] !== undefined ? imageOverrides[product.id] : (product.image_url ?? null)}
                 isOwner={product.created_by === currentUserId}
+                onView={setViewProduct}
                 onEdit={setEditProduct}
                 onDelete={setDeleteId}
+                onToggleServing={() => toggleServing(product)}
               />
             ))}
           </div>
@@ -331,16 +389,16 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
       ) : (
         /* List view */
         <div className="rounded-xl border overflow-hidden">
-          <Table>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
                 <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">Name</TableHead>
-                <TableHead className="text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">kcal</TableHead>
-                <TableHead className="text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">Carbs</TableHead>
-                <TableHead className="text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">Protein</TableHead>
-                <TableHead className="text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">Fats</TableHead>
-                <TableHead className="text-right hidden sm:table-cell font-semibold text-xs uppercase tracking-wide text-muted-foreground">Serving</TableHead>
-                <TableHead className="w-12" />
+                <TableHead className="w-16 text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">kcal</TableHead>
+                <TableHead className="w-20 text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">Carbs</TableHead>
+                <TableHead className="w-20 text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">Protein</TableHead>
+                <TableHead className="w-16 text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">Fats</TableHead>
+                <TableHead className="w-24 text-right hidden sm:table-cell font-semibold text-xs uppercase tracking-wide text-muted-foreground">Serving</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -351,14 +409,18 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((product) => (
+                filtered.map((product) => {
+                  const activeG = activeServings[product.id]
+                  const n = calcNutrition(product, activeG ?? 100)
+                  const imgSrc = imageOverrides[product.id] !== undefined ? imageOverrides[product.id] : product.image_url
+                  return (
                   <TableRow key={product.id} className="hover:bg-amber-50/50 dark:hover:bg-amber-950/10">
                     <TableCell>
                       <div className="flex items-center gap-2.5">
                         <div className="size-8 rounded-lg overflow-hidden bg-muted/40 flex items-center justify-center shrink-0 border">
-                          {(imageOverrides[product.id] !== undefined ? imageOverrides[product.id] : product.image_url) ? (
+                          {imgSrc ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={(imageOverrides[product.id] !== undefined ? imageOverrides[product.id] : product.image_url)!} alt="" className="size-full object-cover" />
+                            <img src={imgSrc} alt="" className="size-full object-cover" />
                           ) : (
                             <ShoppingBasket className="size-4 text-amber-600 dark:text-amber-400" />
                           )}
@@ -373,21 +435,15 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums font-medium text-red-600 dark:text-red-400">{product.calories}</TableCell>
-                    <TableCell className="text-right tabular-nums text-amber-700 dark:text-amber-400">{product.carbs_g}g</TableCell>
-                    <TableCell className="text-right tabular-nums text-blue-700 dark:text-blue-400">{product.protein_g}g</TableCell>
-                    <TableCell className="text-right tabular-nums text-orange-700 dark:text-orange-400">{product.fats_g}g</TableCell>
+                    <TableCell className="text-right tabular-nums font-medium text-red-600 dark:text-red-400">{n.calories}</TableCell>
+                    <TableCell className="text-right tabular-nums text-amber-700 dark:text-amber-400">{n.carbs_g}g</TableCell>
+                    <TableCell className="text-right tabular-nums text-blue-700 dark:text-blue-400">{n.protein_g}g</TableCell>
+                    <TableCell className="text-right tabular-nums text-orange-700 dark:text-orange-400">{n.fats_g}g</TableCell>
                     <TableCell className="text-right hidden sm:table-cell">
-                      {product.serving_size_g ? (
-                        <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border-0">
-                          {product.serving_size_g}g
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">per 100g</span>
-                      )}
+                      <ServingBadge product={product} activeG={activeG} onToggle={() => toggleServing(product)} />
                     </TableCell>
                     <TableCell>
-                      {product.created_by === currentUserId && (
+                      {product.created_by === currentUserId ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon-sm">
@@ -395,10 +451,10 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              className="gap-2"
-                              onClick={() => setEditProduct(product)}
-                            >
+                            <DropdownMenuItem className="gap-2" onClick={() => setViewProduct(product)}>
+                              <Eye className="size-4" /> View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="gap-2" onClick={() => setEditProduct(product)}>
                               <Pencil className="size-4" /> Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -409,15 +465,77 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                      ) : (
+                        <Button variant="ghost" size="icon-sm" onClick={() => setViewProduct(product)} title="View product">
+                          <Eye className="size-4 text-muted-foreground" />
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>
-                ))
+                  )
+                })
               )}
             </TableBody>
           </Table>
         </div>
       )}
+
+      {/* View-only product dialog */}
+      <Dialog open={!!viewProduct} onOpenChange={(o) => !o && setViewProduct(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {viewProduct?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {viewProduct && (() => {
+            const activeG = activeServings[viewProduct.id]
+            const n = calcNutrition(viewProduct, activeG ?? 100)
+            const imgSrc = imageOverrides[viewProduct.id] !== undefined ? imageOverrides[viewProduct.id] : viewProduct.image_url
+            return (
+              <div className="space-y-4">
+                {imgSrc && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={imgSrc} alt="" className="w-full aspect-video object-cover rounded-lg border" />
+                )}
+                {viewProduct.description && (
+                  <p className="text-sm text-muted-foreground">{viewProduct.description}</p>
+                )}
+                <div className="rounded-lg border divide-y">
+                  <div className="flex items-center justify-between px-4 py-2.5 text-sm">
+                    <span className="text-muted-foreground">Calories</span>
+                    <span className="font-semibold tabular-nums text-red-600 dark:text-red-400">{n.calories} kcal</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-2.5 text-sm">
+                    <span className="text-muted-foreground">Carbs</span>
+                    <span className="tabular-nums text-amber-700 dark:text-amber-400">{n.carbs_g}g</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-2.5 text-sm">
+                    <span className="text-muted-foreground">Protein</span>
+                    <span className="tabular-nums text-blue-700 dark:text-blue-400">{n.protein_g}g</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-2.5 text-sm">
+                    <span className="text-muted-foreground">Fats</span>
+                    <span className="tabular-nums text-orange-700 dark:text-orange-400">{n.fats_g}g</span>
+                  </div>
+                </div>
+                {(viewProduct.serving_options ?? []).length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Serving options</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {viewProduct.serving_options.map((opt) => (
+                        <span key={opt.label} className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-2.5 py-0.5 text-xs font-medium">
+                          {opt.label} · {opt.weight_g}g
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+        </DialogContent>
+      </Dialog>
 
       <ProductDialog
         open={!!editProduct}

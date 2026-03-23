@@ -2,7 +2,13 @@ import type { Database } from './database.types'
 
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type WeightRecord = Database['public']['Tables']['weight_records']['Row']
-export type Product = Database['public']['Tables']['products']['Row']
+
+export type ServingOption = { label: string; weight_g: number }
+
+// Extend the DB-generated type to include columns added after codegen
+export type Product = Database['public']['Tables']['products']['Row'] & {
+  serving_options: ServingOption[]
+}
 export type Recipe = Database['public']['Tables']['recipes']['Row']
 export type RecipeIngredient = Database['public']['Tables']['recipe_ingredients']['Row']
 export type DietTable = Database['public']['Tables']['diet_tables']['Row']

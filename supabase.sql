@@ -689,3 +689,7 @@ ALTER TABLE public.user_body_stats ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "body_stats: owner all" ON public.user_body_stats
   FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- ── SERVING OPTIONS (replaces serving_size_g for products) ─────
+-- Stored as JSONB array: [{"label": "Small unit", "weight_g": 40}, ...]
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS serving_options jsonb NOT NULL DEFAULT '[]'::jsonb;

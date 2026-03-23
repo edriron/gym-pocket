@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +68,8 @@ export function RecipeDialog({
 }: RecipeDialogProps) {
   const [loading, setLoading] = useState(false);
   const [ingredients, setIngredients] = useState<LocalIngredient[]>([]);
+  // Remembers the last manually-typed qty per ingredient while the dialog is open
+  const [customQtys, setCustomQtys] = useState<Record<string, number>>({});
   const isEdit = !!recipe;
 
   const form = useForm<RecipeFormValues>({
@@ -81,6 +83,7 @@ export function RecipeDialog({
         name: recipe?.name ?? "",
         description: recipe?.description ?? "",
       });
+      setCustomQtys({});
       if (recipe?.recipe_ingredients) {
         setIngredients(
           recipe.recipe_ingredients.map((ri, i) => ({
@@ -97,14 +100,14 @@ export function RecipeDialog({
     }
   }, [open, recipe, form]);
 
+  const productMap = new Map(products.map((p) => [p.id, p]));
+
   function addIngredient(item: {
     id: string;
     name: string;
     type: "product" | "recipe";
   }) {
-    const product =
-      item.type === "product" ? products.find((p) => p.id === item.id) : null;
-    const defaultQty = product?.serving_size_g ?? 100;
+    const defaultQty = 100;
 
     setIngredients((prev) => [
       ...prev,
@@ -126,10 +129,33 @@ export function RecipeDialog({
     setIngredients((prev) =>
       prev.map((i) => (i.id === id ? { ...i, quantity_g: qty } : i)),
     );
+    // If qty doesn't match any serving option or the 100g baseline, remember it as custom
+    const ing = ingredients.find((i) => i.id === id);
+    if (ing?.item_type === "product") {
+      const product = productMap.get(ing.item_id);
+      const opts = product?.serving_options ?? [];
+      if (opts.length > 0 && qty !== 100 && !opts.some((o) => o.weight_g === qty)) {
+        setCustomQtys((prev) => ({ ...prev, [id]: qty }));
+      }
+    }
+  }
+
+  function applyServingOption(id: string, weightG: number) {
+    setIngredients((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, quantity_g: weightG } : i)),
+    );
+  }
+
+  function applyCustomQty(id: string) {
+    const custom = customQtys[id];
+    if (custom !== undefined) {
+      setIngredients((prev) =>
+        prev.map((i) => (i.id === id ? { ...i, quantity_g: custom } : i)),
+      );
+    }
   }
 
   // Live nutrition calculation
-  const productMap = new Map(products.map((p) => [p.id, p]));
   const nutrition: NutritionValues = sumNutrition(
     ingredients
       .filter((ing) => ing.item_type === "product")
@@ -223,42 +249,101 @@ export function RecipeDialog({
                 {ingredients.length > 0 && (
                   <ScrollArea className="max-h-52">
                     <div className="space-y-2 pr-2">
-                      {ingredients.map((ing) => (
-                        <div
-                          key={ing.id}
-                          className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2"
-                        >
-                          <span className="flex-1 truncate text-sm font-medium">
-                            {ing.item_name}
-                          </span>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Input
-                              type="number"
-                              step="0.1"
-                              min="0.1"
-                              value={ing.quantity_g}
-                              onChange={(e) =>
-                                updateQty(
-                                  ing.id,
-                                  parseFloat(e.target.value) || 0,
-                                )
-                              }
-                              className="h-7 w-20 text-sm text-right"
-                            />
-                            <span className="text-xs text-muted-foreground">
-                              g
-                            </span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-xs"
-                              onClick={() => removeIngredient(ing.id)}
-                            >
-                              <Trash2 className="size-3 text-destructive" />
-                            </Button>
+                      {ingredients.map((ing) => {
+                        const product = ing.item_type === "product" ? productMap.get(ing.item_id) : null;
+                        const opts = product?.serving_options ?? [];
+                        const matchesOpt = opts.some((o) => o.weight_g === ing.quantity_g);
+                        const is100g = ing.quantity_g === 100;
+                        const isCustomActive = opts.length > 0 && !matchesOpt && !is100g;
+                        const hasCustomMemory = customQtys[ing.id] !== undefined && customQtys[ing.id] !== 100;
+                        return (
+                          <div
+                            key={ing.id}
+                            className="rounded-lg border bg-muted/30 px-3 py-2 space-y-2"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="flex-1 truncate text-sm font-medium">
+                                {ing.item_name}
+                              </span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  title="Double the amount"
+                                  onClick={() => updateQty(ing.id, ing.quantity_g * 2)}
+                                  className="px-1 py-0.5 rounded text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                >
+                                  ×2
+                                </button>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  min="0.1"
+                                  value={ing.quantity_g}
+                                  onChange={(e) =>
+                                    updateQty(ing.id, parseFloat(e.target.value) || 0)
+                                  }
+                                  className="h-7 w-20 text-sm text-right"
+                                />
+                                <span className="text-xs text-muted-foreground">g</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  onClick={() => removeIngredient(ing.id)}
+                                >
+                                  <Trash2 className="size-3 text-destructive" />
+                                </Button>
+                              </div>
+                            </div>
+                            {opts.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {/* Always-present 100g baseline chip */}
+                                <button
+                                  type="button"
+                                  onClick={() => applyServingOption(ing.id, 100)}
+                                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors ${
+                                    ing.quantity_g === 100
+                                      ? "bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300"
+                                      : "border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+                                  }`}
+                                >
+                                  100g
+                                </button>
+                                {opts.map((opt) => {
+                                  const active = ing.quantity_g === opt.weight_g;
+                                  return (
+                                    <button
+                                      key={opt.label}
+                                      type="button"
+                                      onClick={() => applyServingOption(ing.id, opt.weight_g)}
+                                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors ${
+                                        active
+                                          ? "bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300"
+                                          : "border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+                                      }`}
+                                    >
+                                      {opt.label} · {opt.weight_g}g
+                                    </button>
+                                  );
+                                })}
+                                {(isCustomActive || hasCustomMemory) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => applyCustomQty(ing.id)}
+                                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors ${
+                                      isCustomActive
+                                        ? "bg-muted border-foreground/20 text-foreground"
+                                        : "border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+                                    }`}
+                                  >
+                                    Custom{isCustomActive ? ` · ${ing.quantity_g}g` : ""}
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </ScrollArea>
                 )}

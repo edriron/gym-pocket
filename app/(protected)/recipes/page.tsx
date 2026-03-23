@@ -40,6 +40,8 @@ export default async function RecipesPage() {
       <PageHeader
         title="Recipes"
         description="Global recipe library combining products and other recipes."
+        icon={ChefHat}
+        iconColor="pink"
         action={
           <AddRecipeButton products={productList} recipes={simpleRecipes} />
         }
@@ -48,6 +50,7 @@ export default async function RecipesPage() {
       {recipeList.length === 0 ? (
         <EmptyState
           icon={ChefHat}
+          iconColor="pink"
           title="No recipes yet"
           description="Create your first recipe by combining products."
           action={

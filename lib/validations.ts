@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MACRO_TAG_VALUES, TYPE_TAG_VALUES } from './product-tags'
 
 // Note: form inputs call field.onChange(parseFloat(e.target.value)) so values are
 // already numbers by the time Zod validates them — no preprocess/coerce needed.
@@ -12,6 +13,11 @@ export const weightSchema = z.object({
 })
 export type WeightFormValues = z.infer<typeof weightSchema>
 
+export const servingOptionSchema = z.object({
+  label: z.string().min(1, 'Label required').max(50),
+  weight_g: z.number().positive('Must be > 0').max(9999),
+})
+
 export const productSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   description: z.string().max(500).optional().or(z.literal('')),
@@ -19,9 +25,9 @@ export const productSchema = z.object({
   carbs_g: z.number().min(0).max(9999),
   protein_g: z.number().min(0).max(9999),
   fats_g: z.number().min(0).max(9999),
-  serving_size_g: z.number().positive().max(99999).optional().nullable(),
-  macro_tags: z.array(z.enum(['protein', 'carb', 'fat'])).default([]),
-  type_tag: z.enum(['fruit', 'vegetable', 'dairy', 'meat']).nullable().optional(),
+  serving_options: z.array(servingOptionSchema).default([]),
+  macro_tags: z.array(z.enum(MACRO_TAG_VALUES)).default([]),
+  type_tag: z.enum(TYPE_TAG_VALUES).nullable().optional(),
 })
 export type ProductFormValues = z.infer<typeof productSchema>
 

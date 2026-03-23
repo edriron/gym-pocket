@@ -35,6 +35,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { productSchema, type ProductFormValues } from '@/lib/validations'
+import { TYPE_TAG_CONFIG, MACRO_TAG_CONFIG, type MacroTag, type TypeTag } from '@/lib/product-tags'
 import { cn } from '@/lib/utils'
 import {
   fetchAndUploadProductImage,
@@ -59,7 +60,7 @@ const DEFAULT_VALUES: ProductFormValues = {
   carbs_g: 0,
   protein_g: 0,
   fats_g: 0,
-  serving_size_g: null,
+  serving_options: [],
   macro_tags: [],
   type_tag: null,
 }
@@ -296,20 +297,19 @@ function ImageSection({
             <TabsContent value="search" className="mt-3 space-y-3">
               {/* Source toggle */}
               <div className="flex items-center rounded-lg border bg-muted/40 p-1 gap-0.5 w-fit">
-                <button
-                  type="button"
-                  onClick={() => { setSearchSource('pexels'); setSearchResults([]) }}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${searchSource === 'pexels' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Pexels
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setSearchSource('off'); setSearchResults([]) }}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${searchSource === 'off' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Open Food Facts
-                </button>
+                {([
+                  { key: 'pexels', label: 'Pexels' },
+                  { key: 'off',    label: 'Open Food Facts' },
+                ] as { key: SearchSource; label: string }[]).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => { setSearchSource(key); setSearchResults([]) }}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${searchSource === key ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
               <div className="flex gap-2">
                 <Input
@@ -400,9 +400,9 @@ export function ProductDialog({ open, onOpenChange, product, onSubmit, onImageUp
               carbs_g: product.carbs_g,
               protein_g: product.protein_g,
               fats_g: product.fats_g,
-              serving_size_g: product.serving_size_g,
-              macro_tags: (product.macro_tags as ('protein' | 'carb' | 'fat')[]) ?? [],
-              type_tag: (product.type_tag as 'fruit' | 'vegetable' | 'dairy' | 'meat' | null) ?? null,
+              serving_options: (product.serving_options as { label: string; weight_g: number }[]) ?? [],
+              macro_tags: (product.macro_tags as MacroTag[]) ?? [],
+              type_tag: (product.type_tag as TypeTag | null) ?? null,
             }
           : DEFAULT_VALUES
       )
@@ -539,29 +539,59 @@ export function ProductDialog({ open, onOpenChange, product, onSubmit, onImageUp
               />
             </div>
 
+            {/* Serving options */}
             <FormField
               control={form.control}
-              name="serving_size_g"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Serving Size (g) — optional</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      placeholder="e.g. 30 for a scoop"
-                      value={field.value ?? ''}
-                      onChange={(e) =>
-                        field.onChange(e.target.value ? parseFloat(e.target.value) : null)
-                      }
-                    />
-                  </FormControl>
-                  <FormDescription className="text-xs">
-                    Optional: define a common serving size in grams
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+              name="serving_options"
+              render={({ field }) => {
+                const options: { label: string; weight_g: number }[] = field.value ?? []
+                function addOption() {
+                  field.onChange([...options, { label: '', weight_g: 0 }])
+                }
+                function removeOption(i: number) {
+                  field.onChange(options.filter((_, idx) => idx !== i))
+                }
+                function updateOption(i: number, key: 'label' | 'weight_g', val: string | number) {
+                  field.onChange(options.map((o, idx) => idx === i ? { ...o, [key]: val } : o))
+                }
+                return (
+                  <FormItem>
+                    <FormLabel>Serving Options — optional</FormLabel>
+                    <div className="space-y-2">
+                      {options.map((opt, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <Input
+                            placeholder="Label (e.g. Small unit)"
+                            value={opt.label}
+                            onChange={(e) => updateOption(i, 'label', e.target.value)}
+                            className="flex-1 h-8 text-sm"
+                          />
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="0.1"
+                            placeholder="g"
+                            value={opt.weight_g || ''}
+                            onChange={(e) => updateOption(i, 'weight_g', parseFloat(e.target.value) || 0)}
+                            className="w-20 h-8 text-sm text-right"
+                          />
+                          <span className="text-xs text-muted-foreground shrink-0">g</span>
+                          <Button type="button" variant="ghost" size="icon-xs" onClick={() => removeOption(i)}>
+                            <X className="size-3 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs w-full" onClick={addOption}>
+                        + Add serving option
+                      </Button>
+                    </div>
+                    <FormDescription className="text-xs">
+                      e.g. "Small unit 40g", "Cup 250g" — allows toggling servings in the product list
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )
+              }}
             />
 
             {/* Macro tags */}
@@ -572,7 +602,7 @@ export function ProductDialog({ open, onOpenChange, product, onSubmit, onImageUp
                 <FormItem>
                   <FormLabel>Macro Tags</FormLabel>
                   <div className="flex gap-2">
-                    {(['protein', 'carb', 'fat'] as const).map((tag) => {
+                    {MACRO_TAG_CONFIG.map(({ tag, activeClasses }) => {
                       const selected = field.value?.includes(tag)
                       return (
                         <button
@@ -587,10 +617,7 @@ export function ProductDialog({ open, onOpenChange, product, onSubmit, onImageUp
                           }}
                           className={cn(
                             'rounded-full px-3 py-1 text-xs font-medium border transition-all capitalize',
-                            tag === 'protein' && selected ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300' :
-                            tag === 'carb' && selected ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300' :
-                            tag === 'fat' && selected ? 'bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300' :
-                            'border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40'
+                            selected ? activeClasses : 'border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40'
                           )}
                         >
                           {tag}
@@ -610,7 +637,7 @@ export function ProductDialog({ open, onOpenChange, product, onSubmit, onImageUp
                 <FormItem>
                   <FormLabel>Type</FormLabel>
                   <div className="flex flex-wrap gap-2">
-                    {(['fruit', 'vegetable', 'dairy', 'meat'] as const).map((tag) => {
+                    {TYPE_TAG_CONFIG.map(({ tag, activeClasses }) => {
                       const selected = field.value === tag
                       return (
                         <button
@@ -619,9 +646,7 @@ export function ProductDialog({ open, onOpenChange, product, onSubmit, onImageUp
                           onClick={() => field.onChange(selected ? null : tag)}
                           className={cn(
                             'rounded-full px-3 py-1 text-xs font-medium border transition-all capitalize',
-                            selected
-                              ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300'
-                              : 'border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40'
+                            selected ? activeClasses : 'border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40'
                           )}
                         >
                           {tag}

@@ -51,10 +51,10 @@ export async function addProduct(values: ProductFormValues) {
     carbs_g: values.carbs_g,
     protein_g: values.protein_g,
     fats_g: values.fats_g,
-    serving_size_g: values.serving_size_g ?? null,
+    serving_options: values.serving_options ?? [],
     macro_tags: values.macro_tags ?? [],
     type_tag: values.type_tag ?? null,
-  });
+  } as any);
 
   if (error) return { error: error.message };
   revalidatePath("/products");
@@ -76,10 +76,10 @@ export async function updateProduct(id: string, values: ProductFormValues) {
       carbs_g: values.carbs_g,
       protein_g: values.protein_g,
       fats_g: values.fats_g,
-      serving_size_g: values.serving_size_g ?? null,
+      serving_options: values.serving_options ?? [],
       macro_tags: values.macro_tags ?? [],
       type_tag: values.type_tag ?? null,
-    })
+    } as any)
     .eq("id", id)
     .eq("created_by", user.id);
 
@@ -122,7 +122,7 @@ export async function importProducts(products: ProductFormValues[]) {
     carbs_g: p.carbs_g,
     protein_g: p.protein_g,
     fats_g: p.fats_g,
-    serving_size_g: p.serving_size_g ?? null,
+    serving_options: p.serving_options ?? [],
   }));
 
   const { error } = await supabase.from("products").upsert(payload, {

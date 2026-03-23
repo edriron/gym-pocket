@@ -39,7 +39,7 @@ export function IngredientPicker({
   const filteredRecipes = recipes.filter((r) => r.id !== excludeRecipeId)
 
   function handleSelect(id: string, name: string, type: 'product' | 'recipe') {
-    setValue(name)
+    setValue('')
     setOpen(false)
     onSelect({ id, name, type })
   }

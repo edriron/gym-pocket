@@ -26,6 +26,7 @@ async function searchPexels(query: string): Promise<FoodResult[]> {
   }));
 }
 
+
 async function searchOpenFoodFacts(query: string): Promise<FoodResult[]> {
   const url =
     `https://search.openfoodfacts.org/search` +
@@ -57,7 +58,8 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim().toLowerCase();
-  const source = searchParams.get("source") === "off" ? "off" : "pexels";
+  const rawSource = searchParams.get("source");
+  const source = rawSource === "off" ? "off" : "pexels";
   if (!query) return NextResponse.json({ error: "Missing query" }, { status: 400 });
 
   const cacheKey = `${source}:${query}`;
@@ -68,9 +70,7 @@ export async function GET(request: Request) {
 
   let results: FoodResult[];
   try {
-    results = source === "off"
-      ? await searchOpenFoodFacts(query)
-      : await searchPexels(query);
+    results = source === "off" ? await searchOpenFoodFacts(query) : await searchPexels(query);
   } catch (err: any) {
     return NextResponse.json({ error: err.message ?? "Search failed." }, { status: 502 });
   }

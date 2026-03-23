@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MoreHorizontal, Pencil, Trash2, Search } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Search, Eye, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -20,6 +20,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { RecipeDialog } from "./RecipeDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { updateRecipe, deleteRecipe } from "@/app/(protected)/recipes/actions";
@@ -40,9 +42,8 @@ export function RecipesTable({
   allRecipes,
   currentUserId,
 }: RecipesTableProps) {
-  const [editRecipe, setEditRecipe] = useState<RecipeWithIngredients | null>(
-    null,
-  );
+  const [editRecipe, setEditRecipe] = useState<RecipeWithIngredients | null>(null);
+  const [viewRecipe, setViewRecipe] = useState<RecipeWithIngredients | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
@@ -151,19 +152,19 @@ export function RecipesTable({
                       </Badge>
                     </TableCell>
 
-                    <TableCell className="w-[90px] text-right tabular-nums">
+                    <TableCell className="w-[90px] text-right tabular-nums font-medium text-red-600 dark:text-red-400">
                       {Math.round(nutrition.calories)}
                     </TableCell>
 
-                    <TableCell className="w-[90px] text-right tabular-nums">
+                    <TableCell className="w-[90px] text-right tabular-nums text-amber-700 dark:text-amber-400">
                       {nutrition.carbs_g.toFixed(1)}g
                     </TableCell>
 
-                    <TableCell className="w-[90px] text-right tabular-nums">
+                    <TableCell className="w-[90px] text-right tabular-nums text-blue-700 dark:text-blue-400">
                       {nutrition.protein_g.toFixed(1)}g
                     </TableCell>
 
-                    <TableCell className="w-[90px] text-right tabular-nums">
+                    <TableCell className="w-[90px] text-right tabular-nums text-orange-700 dark:text-orange-400">
                       {nutrition.fats_g.toFixed(1)}g
                     </TableCell>
 
@@ -174,22 +175,20 @@ export function RecipesTable({
                     </TableCell>
 
                     <TableCell>
-                      {recipe.created_by === currentUserId && (
+                      {recipe.created_by === currentUserId ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon-sm">
                               <MoreHorizontal className="size-4" />
                             </Button>
                           </DropdownMenuTrigger>
-
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              className="gap-2"
-                              onClick={() => setEditRecipe(recipe)}
-                            >
+                            <DropdownMenuItem className="gap-2" onClick={() => setViewRecipe(recipe)}>
+                              <Eye className="size-4" /> View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="gap-2" onClick={() => setEditRecipe(recipe)}>
                               <Pencil className="size-4" /> Edit
                             </DropdownMenuItem>
-
                             <DropdownMenuItem
                               className="gap-2 text-destructive focus:text-destructive"
                               onClick={() => setDeleteId(recipe.id)}
@@ -198,6 +197,10 @@ export function RecipesTable({
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                      ) : (
+                        <Button variant="ghost" size="icon-sm" onClick={() => setViewRecipe(recipe)} title="View ingredients">
+                          <Eye className="size-4 text-muted-foreground" />
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>
@@ -207,6 +210,44 @@ export function RecipesTable({
           </TableBody>
         </Table>
       </div>
+
+      {/* View-only ingredients dialog */}
+      <Dialog open={!!viewRecipe} onOpenChange={(o) => !o && setViewRecipe(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {viewRecipe?.name}
+              <Badge variant="secondary" className="text-xs font-normal">
+                {viewRecipe?.recipe_ingredients.length} ingredients
+              </Badge>
+            </DialogTitle>
+          </DialogHeader>
+          {viewRecipe && (
+            <ScrollArea className="max-h-96">
+              <div className="space-y-1.5 pr-2">
+                {viewRecipe.recipe_ingredients.map((ing, i) => {
+                  const name = ing.product?.name ?? ing.sub_recipe?.name ?? "Unknown";
+                  const isRecipe = !!ing.sub_recipe;
+                  return (
+                    <div key={i} className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="truncate font-medium">{name}</span>
+                        {isRecipe && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 shrink-0">recipe</Badge>
+                        )}
+                      </div>
+                      <span className="text-muted-foreground tabular-nums shrink-0 ml-4">{ing.quantity_g}g</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {viewRecipe.description && (
+                <p className="mt-4 text-sm text-muted-foreground border-t pt-3">{viewRecipe.description}</p>
+              )}
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Edit dialog */}
       <RecipeDialog

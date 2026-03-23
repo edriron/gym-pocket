@@ -31,6 +31,11 @@ const NAV_ACCENT: Record<string, { idle: string; active: string; dot: string }> 
     active: 'text-amber-600 dark:text-amber-400',
     dot:    'bg-amber-500',
   },
+  '/recipes': {
+    idle:   'text-muted-foreground hover:text-pink-600 dark:hover:text-pink-400',
+    active: 'text-pink-600 dark:text-pink-400',
+    dot:    'bg-pink-500',
+  },
 }
 
 export function MobileNav() {
@@ -52,14 +57,14 @@ export function MobileNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              'flex flex-1 flex-col items-center justify-center gap-1 py-2 text-xs transition-colors',
+              'flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] transition-colors',
               isActive ? accent.active : accent.idle
             )}
           >
             <div className="relative">
-              <Icon className="size-5" />
+              <Icon className="size-4.5" />
               {isActive && (
-                <span className={cn('absolute -top-1 -right-1 size-2 rounded-full border-2 border-card', accent.dot)} />
+                <span className={cn('absolute -top-1 -right-1 size-1.5 rounded-full border border-card', accent.dot)} />
               )}
             </div>
             <span className={cn('font-medium', isActive && 'font-semibold')}>{item.label}</span>

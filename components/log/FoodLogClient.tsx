@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { AddFoodEntryDialog } from './AddFoodEntryDialog'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { deleteFoodLog } from '@/app/(protected)/log/actions'
 import { calcProductNutrition, sumNutrition, fmtNum } from '@/lib/nutrition'
 import { cn } from '@/lib/utils'
@@ -79,6 +80,7 @@ export function FoodLogClient({ gymDay, logs, products, recipes }: FoodLogClient
   const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   // On mount: if URL gym day doesn't match local gym day, navigate to local date
   useEffect(() => {
@@ -98,6 +100,7 @@ export function FoodLogClient({ gymDay, logs, products, recipes }: FoodLogClient
     const result = await deleteFoodLog(id)
     if (result?.error) toast.error(result.error)
     setDeletingId(null)
+    setPendingDeleteId(null)
   }
 
   // Compute daily totals
@@ -257,11 +260,14 @@ export function FoodLogClient({ gymDay, logs, products, recipes }: FoodLogClient
                   <span className="text-xs text-muted-foreground shrink-0">—</span>
                 )}
 
-                {/* Delete */}
+                {/* Delete — always visible on mobile, hover-only on desktop */}
                 <button
                   disabled={deletingId === log.id}
-                  onClick={() => handleDelete(log.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-1 rounded hover:bg-destructive/10 disabled:opacity-50"
+                  onClick={() => setPendingDeleteId(log.id)}
+                  className={cn(
+                    'shrink-0 p-1 rounded transition-all hover:bg-destructive/10 disabled:opacity-40',
+                    'sm:opacity-0 sm:group-hover:opacity-100'
+                  )}
                   aria-label="Delete entry"
                 >
                   <Trash2 className="size-3.5 text-destructive" />
@@ -278,6 +284,15 @@ export function FoodLogClient({ gymDay, logs, products, recipes }: FoodLogClient
         products={products}
         recipes={recipes}
         gymDay={gymDay}
+      />
+
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(open) => { if (!open) setPendingDeleteId(null) }}
+        title="Delete entry?"
+        description="This food log entry will be permanently removed."
+        confirmLabel="Delete"
+        onConfirm={() => handleDelete(pendingDeleteId!)}
       />
     </div>
   )

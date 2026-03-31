@@ -5,17 +5,34 @@ import Link from 'next/link'
 import {
   Scale, Utensils, Dumbbell, ChevronRight,
   TrendingDown, TrendingUp, Minus, ArrowRight,
+  ClipboardList,
 } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
-import type { WeightRecord, DietTable, WorkoutTable } from '@/types'
+import { fmtNum, calcProductNutrition, sumNutrition } from '@/lib/nutrition'
+import type { WeightRecord, DietTable, WorkoutTable, NutritionValues } from '@/types'
 
 export const metadata = { title: 'Dashboard — Gym Pocket' }
+
+function utcToday(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
+function gymDayBounds(dateStr: string): { start: string; end: string } {
+  const start = new Date(`${dateStr}T05:00:00Z`)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 1)
+  return { start: start.toISOString(), end: end.toISOString() }
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [weightRes, dietRes, workoutRes] = await Promise.all([
+  const today = utcToday()
+  const { start, end } = gymDayBounds(today)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [weightRes, dietRes, workoutRes, logsRes] = await Promise.all([
     supabase
       .from('weight_records')
       .select('*')
@@ -34,6 +51,12 @@ export default async function DashboardPage() {
       .eq('user_id', user!.id)
       .order('updated_at', { ascending: false })
       .limit(3),
+    (supabase as any)
+      .from('food_logs')
+      .select('quantity_g, product:products(calories, carbs_g, protein_g, fats_g), recipe_id')
+      .eq('user_id', user!.id)
+      .gte('logged_at', start)
+      .lt('logged_at', end),
   ])
 
   const weightRecords = weightRes.data as WeightRecord[] | null
@@ -53,25 +76,78 @@ export default async function DashboardPage() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
+  // Compute today's log summary (product entries only — recipes need RPC calls)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawLogs: any[] = logsRes.data ?? []
+  const productNutritions: NutritionValues[] = rawLogs
+    .filter((l: any) => l.product)
+    .map((l: any) => calcProductNutrition(l.product, l.quantity_g))
+  const recipeCount = rawLogs.filter((l: any) => l.recipe_id).length
+  const logTotals = sumNutrition(productNutritions)
+  const hasLogs = rawLogs.length > 0
+
   return (
     <div className="space-y-6">
 
-      {/* Hero greeting */}
-      <div className="relative overflow-hidden rounded-2xl border bg-card px-6 py-7">
-        {/* ambient blobs */}
-        <div className="pointer-events-none absolute -top-10 -right-10 size-52 rounded-full bg-indigo-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 right-1/3 size-40 rounded-full bg-violet-500/8 blur-2xl" />
-        <div className="relative">
-          <p className="text-sm font-medium text-muted-foreground mb-0.5">
-            {format(new Date(), 'EEEE, MMMM d')}
-          </p>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {greeting}, {userName}! 👋
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Here&apos;s your fitness overview for today.
-          </p>
+      {/* Hero greeting + today's log — responsive layout */}
+      <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+
+        {/* Greeting */}
+        <div className="relative overflow-hidden rounded-2xl border bg-card px-6 py-7">
+          <div className="pointer-events-none absolute -top-10 -right-10 size-52 rounded-full bg-indigo-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute bottom-0 right-1/3 size-40 rounded-full bg-violet-500/8 blur-2xl" />
+          <div className="relative">
+            <p className="text-sm font-medium text-muted-foreground mb-0.5">
+              {format(new Date(), 'EEEE, MMMM d')}
+            </p>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {greeting}, {userName}! 👋
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Here&apos;s your fitness overview for today.
+            </p>
+          </div>
         </div>
+
+        {/* Today's food log summary — inline on desktop, below on mobile */}
+        <Link href="/log" className="block">
+          <div className="relative overflow-hidden rounded-2xl border bg-card px-6 py-7 h-full flex flex-col justify-between hover:shadow-md transition-all hover:border-teal-200 dark:hover:border-teal-800/60 min-w-[260px] min-h-[160px]">
+            <div className="pointer-events-none absolute top-0 right-0 size-24 rounded-full bg-teal-400/10 blur-2xl" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-900/40">
+                  <ClipboardList className="size-3.5 text-teal-600 dark:text-teal-400" />
+                </div>
+                <p className="text-sm font-semibold text-muted-foreground">Today&apos;s Log</p>
+              </div>
+              {hasLogs ? (
+                <div className="space-y-2">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold tabular-nums text-teal-700 dark:text-teal-300">
+                      {fmtNum(logTotals.calories)}
+                    </span>
+                    <span className="text-sm text-muted-foreground">kcal</span>
+                  </div>
+                  <div className="flex gap-3 text-sm">
+                    <span className="tabular-nums font-medium">{fmtNum(logTotals.protein_g)}g <span className="text-xs text-muted-foreground font-normal">P</span></span>
+                    <span className="tabular-nums font-medium">{fmtNum(logTotals.carbs_g)}g <span className="text-xs text-muted-foreground font-normal">C</span></span>
+                    <span className="tabular-nums font-medium">{fmtNum(logTotals.fats_g)}g <span className="text-xs text-muted-foreground font-normal">F</span></span>
+                  </div>
+                  {recipeCount > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      +{recipeCount} recipe {recipeCount === 1 ? 'entry' : 'entries'}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nothing logged yet</p>
+              )}
+            </div>
+            <p className="relative text-xs text-teal-600 dark:text-teal-400 font-medium mt-3 flex items-center gap-1">
+              View log <ArrowRight className="size-3" />
+            </p>
+          </div>
+        </Link>
       </div>
 
       {/* Stat cards */}

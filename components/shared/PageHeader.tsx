@@ -9,6 +9,7 @@ const ICON_STYLES: Record<string, { wrapper: string; icon: string }> = {
   sky:     { wrapper: 'bg-sky-100 dark:bg-sky-900/40',         icon: 'text-sky-600 dark:text-sky-400' },
   amber:   { wrapper: 'bg-amber-100 dark:bg-amber-900/40',     icon: 'text-amber-600 dark:text-amber-400' },
   pink:    { wrapper: 'bg-pink-100 dark:bg-pink-900/40',       icon: 'text-pink-600 dark:text-pink-400' },
+  teal:    { wrapper: 'bg-teal-100 dark:bg-teal-900/40',       icon: 'text-teal-600 dark:text-teal-400' },
 }
 
 interface PageHeaderProps {

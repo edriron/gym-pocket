@@ -16,6 +16,11 @@ const NAV_ACCENT: Record<string, { idle: string; active: string; dot: string }> 
     active: 'text-sky-600 dark:text-sky-400',
     dot:    'bg-sky-500',
   },
+  '/log': {
+    idle:   'text-muted-foreground hover:text-teal-600 dark:hover:text-teal-400',
+    active: 'text-teal-600 dark:text-teal-400',
+    dot:    'bg-teal-500',
+  },
   '/diet': {
     idle:   'text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400',
     active: 'text-emerald-600 dark:text-emerald-400',

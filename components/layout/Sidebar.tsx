@@ -6,6 +6,10 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 
+interface SidebarProps {
+  landingPage?: string
+}
+
 // Full Tailwind class strings — must be static for JIT to include them
 const NAV_ACCENT: Record<
   string,
@@ -52,6 +56,13 @@ const NAV_ACCENT: Record<
     bgActive: "bg-amber-50 dark:bg-amber-950/40",
     textActive: "text-amber-700 dark:text-amber-300",
   },
+  "/log": {
+    iconIdle: "text-teal-500 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/40",
+    iconActive: "text-white bg-teal-600 dark:bg-teal-500",
+    bgIdle: "hover:bg-teal-50 dark:hover:bg-teal-950/30",
+    bgActive: "bg-teal-50 dark:bg-teal-950/40",
+    textActive: "text-teal-700 dark:text-teal-300",
+  },
   "/recipes": {
     iconIdle: "text-pink-500 dark:text-pink-400 bg-pink-100 dark:bg-pink-900/40",
     iconActive: "text-white bg-pink-600 dark:bg-pink-500",
@@ -68,13 +79,13 @@ const NAV_ACCENT: Record<
   },
 };
 
-export function Sidebar() {
+export function Sidebar({ landingPage = '/dashboard' }: SidebarProps) {
   const pathname = usePathname();
 
   return (
     <aside className="hidden md:flex h-screen w-64 flex-col border-r bg-card px-3 py-5 gap-1 sticky top-0">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-3 pb-5">
+      <Link href={landingPage} className="flex items-center gap-3 px-3 pb-5">
         <div className="flex size-9 items-center justify-center rounded-xl shrink-0">
           <Image src="/icon.png" alt="Gym Pocket" width={22} height={22} />
         </div>
@@ -86,7 +97,7 @@ export function Sidebar() {
             Fitness Tracker
           </span>
         </div>
-      </div>
+      </Link>
 
       {/* Navigation */}
       <nav className="flex flex-col gap-0.5 flex-1">

@@ -22,9 +22,18 @@ export default async function ProtectedLayout({
 
   const user = session.user
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: prefs } = await (supabase as any)
+    .from('user_body_stats')
+    .select('landing_page')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const landingPage: string = (prefs as { landing_page?: string } | null)?.landing_page ?? '/dashboard'
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar />
+      <Sidebar landingPage={landingPage} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar user={user} />
         <main className="flex-1 overflow-y-auto p-4 pb-20 md:p-6 md:pb-6">

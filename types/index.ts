@@ -59,3 +59,18 @@ export type NutritionValues = {
   protein_g: number
   fats_g: number
 }
+
+export type FoodLog = {
+  id: string
+  user_id: string
+  product_id: string | null
+  recipe_id: string | null
+  quantity_g: number
+  logged_at: string
+  created_at: string
+}
+
+export type FoodLogWithDetails = FoodLog & {
+  product: Product | null
+  recipe: (Recipe & { nutrition?: NutritionValues }) | null
+}

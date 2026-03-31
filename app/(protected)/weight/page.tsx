@@ -6,6 +6,7 @@ import { AddWeightButton } from './WeightClientSection'
 import { Scale, User } from 'lucide-react'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ProfileForm } from '@/components/profile/ProfileForm'
+import { LandingPageCard } from '@/components/profile/LandingPageCard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export const metadata = { title: 'Weight & Profile — Gym Pocket' }
@@ -14,9 +15,10 @@ export default async function WeightPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [{ data: records }, statsRes, weightRes] = await Promise.all([
     supabase.from('weight_records').select('*').eq('user_id', user!.id).order('recorded_at', { ascending: false }),
-    supabase.from('user_body_stats').select('*').eq('user_id', user!.id).maybeSingle(),
+    (supabase as any).from('user_body_stats').select('*').eq('user_id', user!.id).maybeSingle(),
     supabase.from('weight_records').select('weight_kg').eq('user_id', user!.id).order('recorded_at', { ascending: false }).limit(1).maybeSingle(),
   ])
 
@@ -44,7 +46,7 @@ export default async function WeightPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="profile">
+        <TabsContent value="profile" className="space-y-6">
           <ProfileForm
             initialStats={stats ? {
               age: stats.age ?? undefined,
@@ -54,6 +56,7 @@ export default async function WeightPage() {
             } : undefined}
             latestWeightKg={latestWeightKg}
           />
+          <LandingPageCard initialLandingPage={(stats as { landing_page?: string } | null)?.landing_page ?? '/dashboard'} />
         </TabsContent>
 
         <TabsContent value="weight">

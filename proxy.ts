@@ -38,7 +38,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/diet') ||
     pathname.startsWith('/workout') ||
     pathname.startsWith('/products') ||
-    pathname.startsWith('/recipes')
+    pathname.startsWith('/recipes') ||
+    pathname.startsWith('/log')
 
   // Redirect unauthenticated users away from protected routes
   if (!user && isProtected) {
@@ -48,9 +49,18 @@ export async function proxy(request: NextRequest) {
   }
 
   // Redirect authenticated users away from the login page
+  // Use the user's preferred landing page from their settings
   if (user && pathname === '/') {
+    const { data: prefs } = await supabase
+      .from('user_body_stats' as never)
+      .select('landing_page')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    const landingPage = (prefs as { landing_page?: string } | null)?.landing_page ?? '/dashboard'
+
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
+    url.pathname = landingPage
     return NextResponse.redirect(url)
   }
 

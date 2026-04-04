@@ -37,6 +37,7 @@ const TYPE_TAGS  = TYPE_TAG_CONFIG
 interface ProductsTableProps {
   products: Product[]
   currentUserId: string
+  isAdmin?: boolean
 }
 
 function ProductImageArea({ imageUrl }: { imageUrl: string | null }) {
@@ -214,7 +215,7 @@ function ServingBadge({ product, activeG, onToggle }: { product: Product; active
   )
 }
 
-export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
+export function ProductsTable({ products, currentUserId, isAdmin = false }: ProductsTableProps) {
   const [editProduct, setEditProduct] = useState<Product | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -253,8 +254,9 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
   async function handleUpdate(values: ProductFormValues) {
     if (!editProduct) return
     const result = await updateProduct(editProduct.id, values)
-    if (result?.error) toast.error(result.error)
-    else toast.success('Product updated')
+    if (result?.error) { toast.error(result.error); return { error: result.error } }
+    toast.success('Product updated')
+    return undefined
   }
 
   async function handleDelete() {
@@ -377,7 +379,7 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
                 product={product}
                 activeServingG={activeServings[product.id]}
                 imageUrl={imageOverrides[product.id] !== undefined ? imageOverrides[product.id] : (product.image_url ?? null)}
-                isOwner={product.created_by === currentUserId}
+                isOwner={product.created_by === currentUserId || isAdmin}
                 onView={setViewProduct}
                 onEdit={setEditProduct}
                 onDelete={setDeleteId}
@@ -443,7 +445,7 @@ export function ProductsTable({ products, currentUserId }: ProductsTableProps) {
                       <ServingBadge product={product} activeG={activeG} onToggle={() => toggleServing(product)} />
                     </TableCell>
                     <TableCell>
-                      {product.created_by === currentUserId ? (
+                      {product.created_by === currentUserId || isAdmin ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon-sm">

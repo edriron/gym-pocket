@@ -14,12 +14,13 @@ export default async function ProductsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: products } = await supabase
-    .from("products")
-    .select("*")
-    .order("name");
+  const [{ data: products }, { data: profile }] = await Promise.all([
+    supabase.from("products").select("*").order("name"),
+    supabase.from("profiles").select("permission").eq("id", user!.id).single(),
+  ]);
 
   const list = products ?? [];
+  const isAdmin = (profile as any)?.permission === "admin";
 
   return (
     <div className="space-y-6">
@@ -45,7 +46,7 @@ export default async function ProductsPage() {
           action={<AddProductButton />}
         />
       ) : (
-        <ProductsTable products={list} currentUserId={user!.id} />
+        <ProductsTable products={list} currentUserId={user!.id} isAdmin={isAdmin} />
       )}
     </div>
   );

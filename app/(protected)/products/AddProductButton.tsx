@@ -13,8 +13,9 @@ export function AddProductButton() {
 
   async function handleSubmit(values: ProductFormValues) {
     const result = await addProduct(values)
-    if (result?.error) toast.error(result.error)
-    else toast.success('Product added')
+    if (result?.error) { toast.error(result.error); return { error: result.error } }
+    toast.success('Product added')
+    return { productId: (result as any).productId as string }
   }
 
   return (

@@ -693,3 +693,48 @@ CREATE POLICY "body_stats: owner all" ON public.user_body_stats
 -- ── SERVING OPTIONS (replaces serving_size_g for products) ─────
 -- Stored as JSONB array: [{"label": "Small unit", "weight_g": 40}, ...]
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS serving_options jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+-- ── ADMIN PERMISSIONS ──────────────────────────────────────────
+-- permission: 'none' (default) | 'admin' — set directly in the DB
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS permission text NOT NULL DEFAULT 'none'
+  CHECK (permission IN ('none', 'admin'));
+
+-- Helper: returns true if the current session user is an admin
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT COALESCE(
+    (SELECT permission = 'admin' FROM public.profiles WHERE id = auth.uid()),
+    false
+  );
+$$;
+
+-- Products: admins can update/delete any product
+DROP POLICY IF EXISTS "products: own update" ON public.products;
+DROP POLICY IF EXISTS "products: own delete" ON public.products;
+CREATE POLICY "products: own update" ON public.products FOR UPDATE
+  USING (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "products: own delete" ON public.products FOR DELETE
+  USING (auth.uid() = created_by OR public.is_admin());
+
+-- Recipes: admins can update/delete any recipe
+DROP POLICY IF EXISTS "recipes: own update" ON public.recipes;
+DROP POLICY IF EXISTS "recipes: own delete" ON public.recipes;
+CREATE POLICY "recipes: own update" ON public.recipes FOR UPDATE
+  USING (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "recipes: own delete" ON public.recipes FOR DELETE
+  USING (auth.uid() = created_by OR public.is_admin());
+
+-- Recipe ingredients: admins can insert/delete ingredients on any recipe
+DROP POLICY IF EXISTS "ri: creator insert" ON public.recipe_ingredients;
+DROP POLICY IF EXISTS "ri: creator delete" ON public.recipe_ingredients;
+CREATE POLICY "ri: creator insert"
+  ON public.recipe_ingredients FOR INSERT WITH CHECK (
+    EXISTS(SELECT 1 FROM public.recipes r WHERE r.id = recipe_id AND r.created_by = auth.uid())
+    OR public.is_admin()
+  );
+CREATE POLICY "ri: creator delete"
+  ON public.recipe_ingredients FOR DELETE USING (
+    EXISTS(SELECT 1 FROM public.recipes r WHERE r.id = recipe_id AND r.created_by = auth.uid())
+    OR public.is_admin()
+  );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MoreHorizontal, Pencil, Trash2, Search, Eye, X } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Search, Eye } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -34,6 +34,7 @@ interface RecipesTableProps {
   allProducts: Product[];
   allRecipes: Recipe[];
   currentUserId: string;
+  isAdmin?: boolean;
 }
 
 export function RecipesTable({
@@ -41,6 +42,7 @@ export function RecipesTable({
   allProducts,
   allRecipes,
   currentUserId,
+  isAdmin = false,
 }: RecipesTableProps) {
   const [editRecipe, setEditRecipe] = useState<RecipeWithIngredients | null>(null);
   const [viewRecipe, setViewRecipe] = useState<RecipeWithIngredients | null>(null);
@@ -175,7 +177,7 @@ export function RecipesTable({
                     </TableCell>
 
                     <TableCell>
-                      {recipe.created_by === currentUserId ? (
+                      {recipe.created_by === currentUserId || isAdmin ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon-sm">

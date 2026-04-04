@@ -4,6 +4,11 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { RecipeFormValues } from '@/lib/validations'
 
+async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<boolean> {
+  const { data } = await supabase.from('profiles').select('permission').eq('id', userId).single()
+  return (data as any)?.permission === 'admin'
+}
+
 type IngredientInput = {
   item_id: string
   item_type: 'product' | 'recipe'
@@ -51,12 +56,14 @@ export async function updateRecipe(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const { error: recipeError } = await supabase
+  const admin = await isAdmin(supabase, user.id)
+  let updateQuery = supabase
     .from('recipes')
     .update({ name: values.name, description: values.description || null })
     .eq('id', id)
-    .eq('created_by', user.id)
+  if (!admin) updateQuery = updateQuery.eq('created_by', user.id)
 
+  const { error: recipeError } = await updateQuery
   if (recipeError) return { error: recipeError.message }
 
   // Replace all ingredients
@@ -82,12 +89,11 @@ export async function deleteRecipe(id: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const { error } = await supabase
-    .from('recipes')
-    .delete()
-    .eq('id', id)
-    .eq('created_by', user.id)
+  const admin = await isAdmin(supabase, user.id)
+  let deleteQuery = supabase.from('recipes').delete().eq('id', id)
+  if (!admin) deleteQuery = deleteQuery.eq('created_by', user.id)
 
+  const { error } = await deleteQuery
   if (error) return { error: error.message }
   revalidatePath('/recipes')
 }

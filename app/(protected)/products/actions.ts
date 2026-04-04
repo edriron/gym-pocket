@@ -36,6 +36,15 @@ async function normaliseImage(input: ArrayBuffer, _contentType: string): Promise
   return { buffer: resized, contentType: "image/jpeg" };
 }
 
+async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("permission")
+    .eq("id", userId)
+    .single();
+  return (data as any)?.permission === "admin";
+}
+
 export async function addProduct(values: ProductFormValues) {
   const supabase = await createClient();
   const {
@@ -43,7 +52,7 @@ export async function addProduct(values: ProductFormValues) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  const { error } = await supabase.from("products").insert({
+  const { data, error } = await supabase.from("products").insert({
     created_by: user.id,
     name: values.name,
     description: values.description || null,
@@ -54,10 +63,11 @@ export async function addProduct(values: ProductFormValues) {
     serving_options: values.serving_options ?? [],
     macro_tags: values.macro_tags ?? [],
     type_tag: values.type_tag ?? null,
-  } as any);
+  } as any).select("id").single();
 
   if (error) return { error: error.message };
   revalidatePath("/products");
+  return { productId: (data as any).id as string };
 }
 
 export async function updateProduct(id: string, values: ProductFormValues) {
@@ -67,7 +77,8 @@ export async function updateProduct(id: string, values: ProductFormValues) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  const { error } = await supabase
+  const admin = await isAdmin(supabase, user.id);
+  let query = supabase
     .from("products")
     .update({
       name: values.name,
@@ -80,9 +91,10 @@ export async function updateProduct(id: string, values: ProductFormValues) {
       macro_tags: values.macro_tags ?? [],
       type_tag: values.type_tag ?? null,
     } as any)
-    .eq("id", id)
-    .eq("created_by", user.id);
+    .eq("id", id);
+  if (!admin) query = query.eq("created_by", user.id);
 
+  const { error } = await query;
   if (error) return { error: error.message };
   revalidatePath("/products");
   revalidatePath("/recipes");
@@ -95,12 +107,11 @@ export async function deleteProduct(id: string) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  const { error } = await supabase
-    .from("products")
-    .delete()
-    .eq("id", id)
-    .eq("created_by", user.id);
+  const admin = await isAdmin(supabase, user.id);
+  let query = supabase.from("products").delete().eq("id", id);
+  if (!admin) query = query.eq("created_by", user.id);
 
+  const { error } = await query;
   if (error) return { error: error.message };
   revalidatePath("/products");
 }
@@ -151,12 +162,12 @@ async function assertOwner(productId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" as const };
 
-  const { data } = await supabase
-    .from("products")
-    .select("id")
-    .eq("id", productId)
-    .eq("created_by", user.id)
-    .single();
+  const admin = await isAdmin(supabase, user.id);
+
+  let query = supabase.from("products").select("id").eq("id", productId);
+  if (!admin) query = query.eq("created_by", user.id);
+
+  const { data } = await query.single();
   if (!data) return { error: "Not found or not authorized" as const };
 
   return { user, supabase };

@@ -49,7 +49,7 @@ interface ProductDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   product?: Product | null
-  onSubmit: (values: ProductFormValues) => Promise<void>
+  onSubmit: (values: ProductFormValues) => Promise<{ productId?: string } | undefined>
   onImageUpdate?: (productId: string, url: string | null) => void
 }
 
@@ -79,6 +79,216 @@ async function searchFoodDatabase(query: string, source: SearchSource): Promise<
     throw new Error(json.error ?? 'Search failed')
   }
   return res.json()
+}
+
+// ── Create-mode pending image section ─────────────────────────
+function CreateImageSection({
+  pendingPreview,
+  onFileSelect,
+  onUrlSelect,
+  onSearchPick,
+  onClear,
+}: {
+  pendingPreview: string | null
+  onFileSelect: (file: File) => void
+  onUrlSelect: (url: string) => void
+  onSearchPick: (url: string) => void
+  onClear: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [urlInput, setUrlInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<FoodResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [searchSource, setSearchSource] = useState<SearchSource>('pexels')
+
+  async function handleSearch() {
+    if (!searchQuery.trim()) return
+    setSearching(true)
+    setSearchResults([])
+    try {
+      const results = await searchFoodDatabase(searchQuery.trim(), searchSource)
+      setSearchResults(results)
+      if (results.length === 0) toast.info('No results found.')
+    } catch (err: any) {
+      toast.error(err.message ?? 'Search failed. Try again.')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-left hover:bg-muted/40 transition-colors"
+      >
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <ImageIcon className="size-4" />
+          Product Image
+          {pendingPreview && (
+            <span className="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full">
+              Selected
+            </span>
+          )}
+        </span>
+        {open ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
+      </button>
+
+      {open && (
+        <div className="border-t px-4 py-4 space-y-4">
+          {/* Preview */}
+          <div className="flex items-center gap-4">
+            <div className="size-20 rounded-xl border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0">
+              {pendingPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={pendingPreview} alt="" className="size-full object-cover" />
+              ) : (
+                <ShoppingBasket className="size-8 text-muted-foreground/40" />
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>Image will be uploaded when the product is saved.</p>
+              <p>Max 5 MB — JPEG, PNG, WebP or GIF.</p>
+              {pendingPreview && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive h-7 px-2 -ml-2"
+                  onClick={onClear}
+                >
+                  <Trash2 className="size-3.5 mr-1" /> Remove
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <Tabs defaultValue="upload">
+            <TabsList className="w-full grid grid-cols-3 h-8 text-xs">
+              <TabsTrigger value="upload" className="text-xs">
+                <Upload className="size-3 mr-1" /> Upload
+              </TabsTrigger>
+              <TabsTrigger value="url" className="text-xs">URL</TabsTrigger>
+              <TabsTrigger value="search" className="text-xs">
+                <Search className="size-3 mr-1" /> Search
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="upload" className="mt-3">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) onFileSelect(file)
+                  if (fileRef.current) fileRef.current.value = ''
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload className="size-4 mr-2" /> Choose file from PC
+              </Button>
+            </TabsContent>
+
+            <TabsContent value="url" className="mt-3 space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="https://example.com/image.jpg"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      if (urlInput.trim()) { onUrlSelect(urlInput.trim()); setUrlInput('') }
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!urlInput.trim()}
+                  className="shrink-0"
+                  onClick={() => { if (urlInput.trim()) { onUrlSelect(urlInput.trim()); setUrlInput('') } }}
+                >
+                  Use
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Will be fetched and stored when the product is saved.</p>
+            </TabsContent>
+
+            <TabsContent value="search" className="mt-3 space-y-3">
+              <div className="flex items-center rounded-lg border bg-muted/40 p-1 gap-0.5 w-fit">
+                {([
+                  { key: 'pexels', label: 'Pexels' },
+                  { key: 'off', label: 'Open Food Facts' },
+                ] as { key: SearchSource; label: string }[]).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => { setSearchSource(key); setSearchResults([]) }}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${searchSource === key ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. banana, oats, chicken"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearch())}
+                  disabled={searching}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSearch}
+                  disabled={searching || !searchQuery.trim()}
+                  className="shrink-0"
+                >
+                  {searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+                </Button>
+              </div>
+              {searchResults.length > 0 && (
+                <div className="grid grid-cols-4 gap-2 max-h-52 overflow-y-auto pr-1">
+                  {searchResults.map((r, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => { onSearchPick(r.imageUrl); setSearchResults([]); setSearchQuery('') }}
+                      className="group relative rounded-lg overflow-hidden border aspect-square bg-muted/30 hover:border-amber-400 hover:ring-2 hover:ring-amber-400/20 transition-all"
+                      title={r.name}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={r.thumb} alt="" className="size-full object-cover" loading="lazy" />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {searchSource === 'pexels' ? (
+                  <>Powered by <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Pexels</a>.</>
+                ) : (
+                  <>Powered by <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Open Food Facts</a>.</>
+                )}{' '}
+                Click any result to use it.
+              </p>
+            </TabsContent>
+          </Tabs>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── Image section (edit mode only) ────────────────────────────
@@ -377,6 +587,19 @@ export function ProductDialog({ open, onOpenChange, product, onSubmit, onImageUp
   const [loading, setLoading] = useState(false)
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null)
 
+  // Create-mode pending image
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null)
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null)
+
+  function setPendingImage(file: File | null, url: string | null, preview: string | null) {
+    setPendingFile(file)
+    setPendingUrl(url)
+    setPendingPreview(preview)
+  }
+
+  function clearPending() { setPendingImage(null, null, null) }
+
   function handleImageChange(url: string | null) {
     setCurrentImageUrl(url)
     if (product) onImageUpdate?.(product.id, url)
@@ -407,13 +630,34 @@ export function ProductDialog({ open, onOpenChange, product, onSubmit, onImageUp
           : DEFAULT_VALUES
       )
       setCurrentImageUrl(product?.image_url ?? null)
+      clearPending()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, product, form])
 
   async function handleSubmit(values: ProductFormValues) {
     setLoading(true)
     try {
-      await onSubmit(values)
+      const result = await onSubmit(values)
+      if ((result as any)?.error) return
+
+      // Upload pending image for newly created products
+      const newId = (result as any)?.productId as string | undefined
+      if (!isEdit && newId) {
+        if (pendingFile) {
+          const supabase = createClient()
+          const { error } = await supabase.storage
+            .from('product-images')
+            .upload(newId, pendingFile, { upsert: true, contentType: pendingFile.type })
+          if (!error) {
+            const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(newId)
+            await saveProductImageUrl(newId, publicUrl)
+          }
+        } else if (pendingUrl) {
+          await fetchAndUploadProductImage(newId, pendingUrl)
+        }
+      }
+
       onOpenChange(false)
     } finally {
       setLoading(false)
@@ -658,12 +902,23 @@ export function ProductDialog({ open, onOpenChange, product, onSubmit, onImageUp
               )}
             />
 
-            {/* Image section — edit only */}
-            {isEdit && product && (
+            {/* Image section */}
+            {isEdit && product ? (
               <ImageSection
                 product={product}
                 currentImageUrl={currentImageUrl}
                 onImageChange={handleImageChange}
+              />
+            ) : !isEdit && (
+              <CreateImageSection
+                pendingPreview={pendingPreview}
+                onFileSelect={(file) => {
+                  const preview = URL.createObjectURL(file)
+                  setPendingImage(file, null, preview)
+                }}
+                onUrlSelect={(url) => setPendingImage(null, url, url)}
+                onSearchPick={(url) => setPendingImage(null, url, url)}
+                onClear={clearPending}
               />
             )}
 

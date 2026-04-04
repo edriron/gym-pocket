@@ -13,7 +13,7 @@ export default async function RecipesPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: recipes }, { data: products }] = await Promise.all([
+  const [{ data: recipes }, { data: products }, { data: profile }] = await Promise.all([
     supabase
       .from("recipes")
       .select(
@@ -29,7 +29,10 @@ export default async function RecipesPage() {
       .order("name"),
 
     supabase.from("products").select("*").order("name"),
+    supabase.from("profiles").select("permission").eq("id", user!.id).single(),
   ]);
+
+  const isAdmin = (profile as any)?.permission === "admin";
 
   const recipeList = recipes ?? [];
   const productList = products ?? [];
@@ -63,6 +66,7 @@ export default async function RecipesPage() {
           allProducts={productList}
           allRecipes={simpleRecipes}
           currentUserId={user!.id}
+          isAdmin={isAdmin}
         />
       )}
     </div>

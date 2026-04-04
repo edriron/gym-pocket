@@ -254,8 +254,8 @@ export function ProductsTable({ products, currentUserId, isAdmin = false }: Prod
   async function handleUpdate(values: ProductFormValues) {
     if (!editProduct) return
     const result = await updateProduct(editProduct.id, values)
-    if (result?.error) { toast.error(result.error); return { error: result.error } }
-    toast.success('Product updated')
+    if (result?.error) toast.error(result.error)
+    else toast.success('Product updated')
     return undefined
   }
 

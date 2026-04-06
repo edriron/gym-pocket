@@ -78,10 +78,11 @@ export function AddFoodEntryDialog({
 
   // Serving options: always 100g first, then product-specific options
   const servingOptions = useMemo(() => {
-    const base = [{ label: "100g", weight_g: 100 }];
+    const isRecipe = selected?.type === "recipe";
+    const base = [{ label: isRecipe ? "100g (1 Unit)" : "100g", weight_g: 100 }];
     if (!selectedProduct?.serving_options?.length) return base;
     return [...base, ...selectedProduct.serving_options];
-  }, [selectedProduct]);
+  }, [selected, selectedProduct]);
 
   function reset() {
     setSelected(null);
@@ -259,9 +260,7 @@ export function AddFoodEntryDialog({
                           : "border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/50",
                       )}
                     >
-                      {opt.label === `${opt.weight_g}g`
-                        ? opt.label
-                        : `${opt.label}: ${opt.weight_g}g`}
+                      {opt.label}
                     </button>
                   );
                 })}

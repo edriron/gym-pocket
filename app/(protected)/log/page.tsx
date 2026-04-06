@@ -57,7 +57,7 @@ export default async function LogPage({
   if (recipeIds.length > 0) {
     const nutritionResults = await Promise.all(
       recipeIds.map(async (id) => {
-        const { data } = await supabase.rpc('get_recipe_nutrition', { p_recipe_id: id })
+        const { data } = await supabase.rpc('get_recipe_nutrition', { p_recipe_id: id }).single()
         return { id, nutrition: data as NutritionValues | null }
       })
     )

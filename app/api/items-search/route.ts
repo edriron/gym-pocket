@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
   const recipeResults = await Promise.all(
     (recipesRes.data ?? []).map(async (r) => {
-      const { data } = await svc.rpc('get_recipe_nutrition', { p_recipe_id: r.id })
+      const { data } = await svc.rpc('get_recipe_nutrition', { p_recipe_id: r.id }).single()
       const n = data as { calories: number; carbs_g: number; protein_g: number; fats_g: number; total_weight_g: number } | null
       const totalWeight = n?.total_weight_g ?? 100
       return {

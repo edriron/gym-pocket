@@ -25,7 +25,7 @@ export async function addFoodLog(input: AddFoodLogInput) {
   })
 
   if (error) return { error: (error as { message: string }).message }
-  revalidatePath('/log')
+  revalidatePath('/nutrition')
 }
 
 export async function deleteFoodLog(id: string) {
@@ -41,5 +41,5 @@ export async function deleteFoodLog(id: string) {
     .eq('user_id', user.id)
 
   if (error) return { error: (error as { message: string }).message }
-  revalidatePath('/log')
+  revalidatePath('/nutrition')
 }

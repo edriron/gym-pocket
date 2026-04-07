@@ -66,7 +66,7 @@ export async function addProduct(values: ProductFormValues) {
   } as any).select("id").single();
 
   if (error) return { error: error.message };
-  revalidatePath("/products");
+  revalidatePath("/library");
   return { productId: (data as any).id as string };
 }
 
@@ -96,8 +96,8 @@ export async function updateProduct(id: string, values: ProductFormValues) {
 
   const { error } = await query;
   if (error) return { error: error.message };
-  revalidatePath("/products");
-  revalidatePath("/recipes");
+  revalidatePath("/library");
+  revalidatePath("/library");
 }
 
 export async function deleteProduct(id: string) {
@@ -113,7 +113,7 @@ export async function deleteProduct(id: string) {
 
   const { error } = await query;
   if (error) return { error: error.message };
-  revalidatePath("/products");
+  revalidatePath("/library");
 }
 
 export async function importProducts(products: ProductFormValues[]) {
@@ -143,7 +143,7 @@ export async function importProducts(products: ProductFormValues[]) {
 
   if (error) return { error: error.message };
 
-  revalidatePath("/products");
+  revalidatePath("/library");
 
   return { success: true };
 }
@@ -185,7 +185,7 @@ export async function saveProductImageUrl(productId: string, publicUrl: string |
     .eq("id", productId);
 
   if (error) return { error: error.message };
-  revalidatePath("/products");
+  revalidatePath("/library");
 }
 
 /** Server-side: fetch an image URL and upload it to storage, then persist URL. */
@@ -235,7 +235,7 @@ export async function fetchAndUploadProductImage(
     .eq("id", productId);
 
   if (dbError) return { error: dbError.message };
-  revalidatePath("/products");
+  revalidatePath("/library");
   return { publicUrl };
 }
 
@@ -254,5 +254,5 @@ export async function deleteProductImage(productId: string) {
     .eq("id", productId);
 
   if (error) return { error: error.message };
-  revalidatePath("/products");
+  revalidatePath("/library");
 }

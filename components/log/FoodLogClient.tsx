@@ -86,13 +86,13 @@ export function FoodLogClient({ gymDay, logs, products, recipes }: FoodLogClient
   useEffect(() => {
     const local = localGymDay()
     if (gymDay !== local) {
-      router.replace(`/log?date=${local}`)
+      router.replace(`/nutrition?tab=log&date=${local}`)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function navigate(delta: number) {
-    router.push(`/log?date=${addDays(gymDay, delta)}`)
+    router.push(`/nutrition?tab=log&date=${addDays(gymDay, delta)}`)
   }
 
   async function handleDelete(id: string) {
@@ -149,7 +149,7 @@ export function FoodLogClient({ gymDay, logs, products, recipes }: FoodLogClient
           {/* Go to today — Undo2 icon (frameless) */}
           {!isToday && (
             <button
-              onClick={() => router.push(`/log?date=${localGymDay()}`)}
+              onClick={() => router.push(`/nutrition?tab=log&date=${localGymDay()}`)}
               className="p-1.5 rounded-md hover:bg-muted transition-colors"
               aria-label="Go to today"
               title="Go to today"

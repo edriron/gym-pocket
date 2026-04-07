@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { WeightTable } from '@/components/weight/WeightTable'
-import { WeightChart } from '@/components/weight/WeightChart'
+import { WeightInsights } from '@/components/weight/WeightInsights'
 import { AddWeightButton } from './WeightClientSection'
 import { Scale, User } from 'lucide-react'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -70,12 +70,9 @@ export default async function WeightPage() {
             />
           ) : (
             <div className="space-y-6">
-              <div className="rounded-xl border bg-card p-4">
-                <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Weight Trend</h2>
-                <WeightChart records={sorted} />
-              </div>
+              <WeightInsights records={sorted} />
               <div className="space-y-2">
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Records</h2>
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">All Records</h2>
                 <WeightTable records={sorted} />
               </div>
             </div>

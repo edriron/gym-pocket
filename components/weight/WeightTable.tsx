@@ -62,23 +62,33 @@ export function WeightTable({ records }: WeightTableProps) {
             <TableRow>
               <TableHead>Date</TableHead>
               <TableHead>Weight (kg)</TableHead>
+              <TableHead>Delta</TableHead>
               <TableHead className="w-12" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {records.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
                   No records yet. Add your first weight entry.
                 </TableCell>
               </TableRow>
             ) : (
-              records.map((record) => (
+              records.map((record, i) => {
+                // records are sorted descending; previous (older) record is at i+1
+                const prev = records[i + 1]
+                const delta = prev ? Number(record.weight_kg) - Number(prev.weight_kg) : null
+                const deltaStr = delta === null
+                  ? '—'
+                  : `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}`
+
+                return (
                 <TableRow key={record.id}>
                   <TableCell className="font-medium">
                     {format(parseISO(record.recorded_at), 'MMM d, yyyy')}
                   </TableCell>
                   <TableCell>{record.weight_kg} kg</TableCell>
+                  <TableCell className="tabular-nums text-muted-foreground">{deltaStr}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -103,7 +113,7 @@ export function WeightTable({ records }: WeightTableProps) {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))
+              )})
             )}
           </TableBody>
         </Table>

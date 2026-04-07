@@ -16,30 +16,20 @@ const NAV_ACCENT: Record<string, { idle: string; active: string; dot: string }> 
     active: 'text-sky-600 dark:text-sky-400',
     dot:    'bg-sky-500',
   },
-  '/log': {
-    idle:   'text-muted-foreground hover:text-teal-600 dark:hover:text-teal-400',
-    active: 'text-teal-600 dark:text-teal-400',
-    dot:    'bg-teal-500',
-  },
-  '/diet': {
-    idle:   'text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400',
-    active: 'text-emerald-600 dark:text-emerald-400',
-    dot:    'bg-emerald-500',
-  },
   '/workout': {
     idle:   'text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400',
     active: 'text-orange-600 dark:text-orange-400',
     dot:    'bg-orange-500',
   },
-  '/products': {
+  '/nutrition': {
+    idle:   'text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400',
+    active: 'text-emerald-600 dark:text-emerald-400',
+    dot:    'bg-emerald-500',
+  },
+  '/library': {
     idle:   'text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400',
     active: 'text-amber-600 dark:text-amber-400',
     dot:    'bg-amber-500',
-  },
-  '/recipes': {
-    idle:   'text-muted-foreground hover:text-pink-600 dark:hover:text-pink-400',
-    active: 'text-pink-600 dark:text-pink-400',
-    dot:    'bg-pink-500',
   },
 }
 

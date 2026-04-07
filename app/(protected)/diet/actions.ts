@@ -16,7 +16,7 @@ export async function createDietTable(values: DietTableFormValues) {
     .single()
 
   if (error) return { error: error.message }
-  revalidatePath('/diet')
+  revalidatePath('/nutrition')
   return { id: data.id }
 }
 
@@ -31,7 +31,7 @@ export async function renameDietTable(id: string, name: string) {
     .eq('id', id)
 
   if (error) return { error: error.message }
-  revalidatePath('/diet')
+  revalidatePath('/nutrition')
   revalidatePath(`/diet/${id}`)
 }
 
@@ -47,7 +47,7 @@ export async function deleteDietTable(id: string) {
     .eq('user_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/diet')
+  revalidatePath('/nutrition')
 }
 
 export async function addDietSection(dietTableId: string, values: DietSectionFormValues, sortOrder: number) {
@@ -160,7 +160,7 @@ export async function shareTable(
     return { error: error.message }
   }
 
-  revalidatePath('/diet')
+  revalidatePath('/nutrition')
   revalidatePath('/workout')
   return { share }
 }
@@ -177,6 +177,6 @@ export async function removeShare(shareId: string) {
     .eq('owner_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/diet')
+  revalidatePath('/nutrition')
   revalidatePath('/workout')
 }

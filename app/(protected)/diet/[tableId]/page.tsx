@@ -94,10 +94,10 @@ export default async function DietTablePage({ params }: PageProps) {
   return (
     <div className="space-y-4">
       <Link
-        href="/diet"
+        href="/nutrition"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
       >
-        <ChevronLeft className="size-4" /> Diet Tables
+        <ChevronLeft className="size-4" /> Nutrition
       </Link>
 
       <DietTableEditor

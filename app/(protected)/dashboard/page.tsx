@@ -110,7 +110,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Today's food log summary — inline on desktop, below on mobile */}
-        <Link href="/log" className="block">
+        <Link href="/nutrition?tab=log" className="block">
           <div className="relative overflow-hidden rounded-2xl border bg-card px-6 py-7 h-full flex flex-col justify-between hover:shadow-md transition-all hover:border-teal-200 dark:hover:border-teal-800/60 min-w-[260px] min-h-[160px]">
             <div className="pointer-events-none absolute top-0 right-0 size-24 rounded-full bg-teal-400/10 blur-2xl" />
             <div className="relative">
@@ -195,7 +195,7 @@ export default async function DashboardPage() {
         </Link>
 
         {/* Diet tables */}
-        <Link href="/diet">
+        <Link href="/nutrition">
           <Card className="group relative overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer hover:border-emerald-200 dark:hover:border-emerald-800/60">
             <div className="pointer-events-none absolute top-0 right-0 size-24 rounded-full bg-emerald-400/10 blur-2xl group-hover:bg-emerald-400/20 transition-colors" />
             <CardContent className="pt-6 pb-5 relative">
@@ -267,7 +267,7 @@ export default async function DashboardPage() {
                 </div>
                 <CardTitle className="text-sm font-semibold">Recent Diet Tables</CardTitle>
               </div>
-              <Link href="/diet" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
+              <Link href="/nutrition" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
                 View all <ArrowRight className="size-3" />
               </Link>
             </div>

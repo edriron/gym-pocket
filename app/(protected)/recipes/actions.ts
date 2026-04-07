@@ -44,7 +44,7 @@ export async function addRecipe(values: RecipeFormValues, ingredients: Ingredien
     if (ingError) return { error: ingError.message }
   }
 
-  revalidatePath('/recipes')
+  revalidatePath('/library')
 }
 
 export async function updateRecipe(
@@ -81,7 +81,7 @@ export async function updateRecipe(
     if (ingError) return { error: ingError.message }
   }
 
-  revalidatePath('/recipes')
+  revalidatePath('/library')
 }
 
 export async function deleteRecipe(id: string) {
@@ -95,5 +95,5 @@ export async function deleteRecipe(id: string) {
 
   const { error } = await deleteQuery
   if (error) return { error: error.message }
-  revalidatePath('/recipes')
+  revalidatePath('/library')
 }

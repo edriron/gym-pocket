@@ -35,13 +35,6 @@ const NAV_ACCENT: Record<
     bgActive: "bg-sky-50 dark:bg-sky-950/40",
     textActive: "text-sky-700 dark:text-sky-300",
   },
-  "/diet": {
-    iconIdle: "text-emerald-500 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40",
-    iconActive: "text-white bg-emerald-600 dark:bg-emerald-500",
-    bgIdle: "hover:bg-emerald-50 dark:hover:bg-emerald-950/30",
-    bgActive: "bg-emerald-50 dark:bg-emerald-950/40",
-    textActive: "text-emerald-700 dark:text-emerald-300",
-  },
   "/workout": {
     iconIdle: "text-orange-500 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/40",
     iconActive: "text-white bg-orange-600 dark:bg-orange-500",
@@ -49,33 +42,19 @@ const NAV_ACCENT: Record<
     bgActive: "bg-orange-50 dark:bg-orange-950/40",
     textActive: "text-orange-700 dark:text-orange-300",
   },
-  "/products": {
+  "/nutrition": {
+    iconIdle: "text-emerald-500 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40",
+    iconActive: "text-white bg-emerald-600 dark:bg-emerald-500",
+    bgIdle: "hover:bg-emerald-50 dark:hover:bg-emerald-950/30",
+    bgActive: "bg-emerald-50 dark:bg-emerald-950/40",
+    textActive: "text-emerald-700 dark:text-emerald-300",
+  },
+  "/library": {
     iconIdle: "text-amber-500 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40",
     iconActive: "text-white bg-amber-600 dark:bg-amber-500",
     bgIdle: "hover:bg-amber-50 dark:hover:bg-amber-950/30",
     bgActive: "bg-amber-50 dark:bg-amber-950/40",
     textActive: "text-amber-700 dark:text-amber-300",
-  },
-  "/log": {
-    iconIdle: "text-teal-500 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/40",
-    iconActive: "text-white bg-teal-600 dark:bg-teal-500",
-    bgIdle: "hover:bg-teal-50 dark:hover:bg-teal-950/30",
-    bgActive: "bg-teal-50 dark:bg-teal-950/40",
-    textActive: "text-teal-700 dark:text-teal-300",
-  },
-  "/recipes": {
-    iconIdle: "text-pink-500 dark:text-pink-400 bg-pink-100 dark:bg-pink-900/40",
-    iconActive: "text-white bg-pink-600 dark:bg-pink-500",
-    bgIdle: "hover:bg-pink-50 dark:hover:bg-pink-950/30",
-    bgActive: "bg-pink-50 dark:bg-pink-950/40",
-    textActive: "text-pink-700 dark:text-pink-300",
-  },
-  "/profile": {
-    iconIdle: "text-indigo-500 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/40",
-    iconActive: "text-white bg-indigo-600 dark:bg-indigo-500",
-    bgIdle: "hover:bg-indigo-50 dark:hover:bg-indigo-950/30",
-    bgActive: "bg-indigo-50 dark:bg-indigo-950/40",
-    textActive: "text-indigo-700 dark:text-indigo-300",
   },
 };
 
